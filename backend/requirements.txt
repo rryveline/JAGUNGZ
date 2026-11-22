@@ -1,0 +1,12 @@
+fastapi==0.115.6
+uvicorn==0.34.0
+python-multipart==0.0.20
+pillow==11.1.0
+opencv-python-headless==4.11.0.86
+numpy>=2.0.0
+
+# Required to run the trained YOLO26 checkpoint. These are large.
+# Install the same torch / ultralytics versions used for training when you can.
+ultralytics
+torch
+torchvision

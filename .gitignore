@@ -1,0 +1,15 @@
+node_modules/
+.output/
+dist/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.env
+.env.*
+!.env.example
+backend/models/*.pt
+backend/models/*.onnx
+*.log
+.DS_Store

@@ -1,0 +1,36 @@
+{
+  "url": "http://127.0.0.1:8080/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "JAGUNGZ",
+      "hasCanvas": false,
+      "bodyTextLen": 998,
+      "bodyTextHash": "009aa6c2fced1d5974252319fbf7d61c42840fcc0c7e1fbbaa40f8ffe150b8b2",
+      "bodyTextPrefix": "Home · Learn · About us JAGUNGZ Data Mining and Warehousing - B ",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/landing-desktop.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "JAGUNGZ",
+      "hasCanvas": false,
+      "bodyTextLen": 979,
+      "bodyTextHash": "f0326a416b98539dc87319616748c4eff10470423f25771b848fc5ba1f5b8906",
+      "bodyTextPrefix": "Menu JAGUNGZ Data Mining and Warehousing - B A closer look at su",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/landing-desktop-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/landing-desktop.json"
+}

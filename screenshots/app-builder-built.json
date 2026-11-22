@@ -1,0 +1,40 @@
+{
+  "url": "http://127.0.0.1:8081/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "Corn Leaf FAW Detection",
+      "hasCanvas": false,
+      "bodyTextLen": 619,
+      "bodyTextHash": "0b268a31709491bc3da552ffa26d7c716cc94246305a90cca84f81ce6fe897ff",
+      "bodyTextPrefix": "CORN LEAF STUDY Corn Leaf FAW Detection Detect suspected Fall Ar",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-built.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "Corn Leaf FAW Detection",
+      "hasCanvas": false,
+      "bodyTextLen": 619,
+      "bodyTextHash": "0b268a31709491bc3da552ffa26d7c716cc94246305a90cca84f81ce6fe897ff",
+      "bodyTextPrefix": "CORN LEAF STUDY Corn Leaf FAW Detection Detect suspected Fall Ar",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-built-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-built.json",
+  "divergesFromBaseline": true,
+  "baselineReasons": [
+    "desktop: body text changed (534 -> 619 chars, hash mismatch)"
+  ]
+}

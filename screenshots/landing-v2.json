@@ -1,0 +1,36 @@
+{
+  "url": "http://127.0.0.1:8080/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "JAGUNGZ",
+      "hasCanvas": false,
+      "bodyTextLen": 1022,
+      "bodyTextHash": "438f4177ccbd3a08f0b153a53cfa4205beeec0925745164e74fb185ada66552a",
+      "bodyTextPrefix": "JAGUNGZ Home Learn About us Analyze DATA MINING AND WAREHOUSING ",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/landing-v2.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "JAGUNGZ",
+      "hasCanvas": false,
+      "bodyTextLen": 983,
+      "bodyTextHash": "05270f2bd2e9ddefb767568ddf78f0e24acb52988ff67c25998370ef0ace87ea",
+      "bodyTextPrefix": "JAGUNGZ Menu DATA MINING AND WAREHOUSING - B JAGUNGZ A closer lo",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/landing-v2-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/landing-v2.json"
+}
