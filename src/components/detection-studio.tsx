@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Download, Leaf, Loader2, RotateCcw, ScanSearch, TriangleAlert, Upload } from "lucide-react";
+import { ArrowLeft, Download, Leaf, Loader2, RotateCcw, ScanSearch, TriangleAlert, Upload } from "lucide-react";
 import {
   DEFAULT_MAX_UPLOAD_BYTES,
   formatBytes,
@@ -157,6 +157,15 @@ export function DetectionStudio() {
   return (
     <div className="min-h-screen">
       <header className="border-b border-line bg-surface">
+        <div className="mx-auto max-w-6xl px-4 pt-4 sm:px-6">
+          <Link
+            to="/"
+            className="group inline-flex h-10 items-center gap-2 rounded-full border border-line bg-canvas px-4 text-sm font-semibold text-ink transition-colors duration-200 hover:border-primary hover:text-primary"
+          >
+            <ArrowLeft className="size-4 transition-transform duration-300 ease-out group-hover:-translate-x-1" aria-hidden="true" />
+            Back to home
+          </Link>
+        </div>
         <div className="mx-auto flex max-w-6xl flex-col gap-5 px-4 py-5 sm:px-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="flex items-start gap-4">
             <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground">

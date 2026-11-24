@@ -26,12 +26,39 @@ const LESSONS = [
   },
 ] as const;
 
+// Foto anggota: taruh file di public/landing/ dengan nama di bawah.
+// Selama file belum ada, kartu menampilkan inisial nama.
 const TEAM = [
-  { name: "Model", role: "Trains the detector", src: "/landing/person-1.jpg" },
-  { name: "Data", role: "Labels the leaves", src: "/landing/person-2.jpg" },
-  { name: "Interface", role: "Builds this site", src: "/landing/person-3.jpg" },
-  { name: "Evaluation", role: "Checks the results", src: "/landing/person-4.jpg" },
-  { name: "Report", role: "Writes the notes", src: "/landing/person-5.jpg" },
+  {
+    name: "Newguinea",
+    role: "Lead · Evaluation",
+    task: "Evaluation tools and final model",
+    src: "/landing/team-newguinea.jpg",
+  },
+  {
+    name: "Victoria",
+    role: "Data · Baseline",
+    task: "Dataset, size profile, E0–E1",
+    src: "/landing/team-victoria.jpg",
+  },
+  {
+    name: "Ryveline",
+    role: "Resolution · Tiling",
+    task: "High-res E2, tiling E3",
+    src: "/landing/team-ryveline.jpg",
+  },
+  {
+    name: "Tiara",
+    role: "Inference · Errors",
+    task: "SAHI E4, augmentation E6, error analysis",
+    src: "/landing/team-tiara.jpg",
+  },
+  {
+    name: "Mitchelly",
+    role: "Architecture · Deploy",
+    task: "P2 head E5, INT8 export E7, demo",
+    src: "/landing/team-mitchelly.jpg",
+  },
 ] as const;
 
 const TITLE = "JAGUNGZ";
@@ -61,6 +88,29 @@ function useInView<T extends HTMLElement>(threshold = 0.25) {
   }, [threshold]);
 
   return { ref, shown };
+}
+
+function TeamPortrait({ name, src }: { name: string; src: string }) {
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return (
+      <div className="flex size-full items-center justify-center bg-canvas">
+        <span className="flex size-24 items-center justify-center rounded-full border border-accent font-display text-4xl font-semibold text-accent">
+          {name.charAt(0)}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={`Portrait of ${name}`}
+      onError={() => setFailed(true)}
+      className="size-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-105"
+    />
+  );
 }
 
 export function LandingPage() {
@@ -303,16 +353,13 @@ export function LandingPage() {
               <li key={person.name} className="portrait-reveal" style={{ transitionDelay: `${index * 90}ms` }}>
                 <article className="group text-center">
                   <div className="relative mx-auto aspect-2/3 w-full max-w-48 overflow-hidden">
-                    <img
-                      src={person.src}
-                      alt=""
-                      className="size-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-105"
-                    />
+                    <TeamPortrait name={person.name} src={person.src} />
                     <div className="pointer-events-none absolute inset-0 bg-accent opacity-0 mix-blend-multiply transition-opacity duration-500 group-hover:opacity-100" />
                   </div>
-                  <h3 className="mt-5 text-sm font-semibold tracking-widest text-accent uppercase">{person.name}</h3>
+                  <h3 className="mt-5 font-display text-lg font-semibold text-ink">{person.name}</h3>
+                  <p className="mt-1 text-xs font-semibold tracking-widest text-accent uppercase">{person.role}</p>
                   <span className="name-rule mx-auto mt-2 block h-px w-8 bg-accent" />
-                  <p className="mt-2 text-sm text-muted">{person.role}</p>
+                  <p className="mt-2 text-sm text-muted">{person.task}</p>
                 </article>
               </li>
             ))}
