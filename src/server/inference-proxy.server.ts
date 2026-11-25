@@ -16,32 +16,56 @@ const OFFLINE_STATUS = {
     "The YOLO26 inference runtime is unavailable. Detections are reported only from your trained model — sample boxes are not substituted.",
 };
 
+
 type CliResult = { code: number; stdout: string };
 
 function runCli(args: string[], timeoutMs: number): Promise<CliResult> {
   return new Promise((resolve, reject) => {
-    const child = spawn("python3", ["-m", "backend.cli", ...args], {
-      cwd: "/workspace",
-      env: { ...process.env, PYTHONPATH: "/workspace" },
-    });
+    const projectRoot = process.cwd();
+
+    // Gunakan Python dari virtual environment JAGUNGZ
+    const pythonBin =
+      process.env.PYTHON_BIN ||
+      join(projectRoot, ".venv", "bin", "python");
+
+    const child = spawn(
+      pythonBin,
+      ["-m", "backend.cli", ...args],
+      {
+        cwd: projectRoot,
+        env: {
+          ...process.env,
+          PYTHONPATH: projectRoot,
+        },
+      },
+    );
+
     let stdout = "";
+
     const timer = setTimeout(() => {
       child.kill("SIGKILL");
       const error = new Error("timeout");
       error.name = "TimeoutError";
       reject(error);
     }, timeoutMs);
+
     child.stdout.setEncoding("utf8");
+
     child.stdout.on("data", (chunk: string) => {
       stdout += chunk;
     });
+
     child.on("error", (error) => {
       clearTimeout(timer);
       reject(error);
     });
+
     child.on("close", (code) => {
       clearTimeout(timer);
-      resolve({ code: code ?? 1, stdout });
+      resolve({
+        code: code ?? 1,
+        stdout,
+      });
     });
   });
 }
