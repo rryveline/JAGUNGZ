@@ -1,9 +1,4 @@
-"""Inference settings.
-
-The confidence threshold is a placeholder. Replace it with the cutoff chosen
-during validation by setting CONFIDENCE_THRESHOLD. Do not treat the default as
-a measured operating point.
-"""
+"""Inference settings."""
 
 from __future__ import annotations
 
@@ -16,8 +11,11 @@ BACKEND_DIR = Path(__file__).resolve().parents[1]
 REPO_ROOT = BACKEND_DIR.parent
 DEFAULT_MODEL_PATH = BACKEND_DIR / "models" / "best.pt"
 
-# Placeholder only. The final cutoff comes from model evaluation.
-PLACEHOLDER_CONFIDENCE_THRESHOLD = 0.25
+MIN_CONFIDENCE_THRESHOLD = 0.05
+MAX_CONFIDENCE_THRESHOLD = 0.90
+DEFAULT_CONFIDENCE_THRESHOLD = 0.20
+DEFAULT_IOU_THRESHOLD = 0.50
+DEFAULT_IMGSZ = 1280
 DEFAULT_MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 EXPECTED_CLASS_NAME = "infected"
 
@@ -34,9 +32,24 @@ def _float_env(name: str, default: float) -> float:
 
 
 def _confidence_threshold() -> float:
-    value = _float_env("CONFIDENCE_THRESHOLD", PLACEHOLDER_CONFIDENCE_THRESHOLD)
-    if not 0 < value <= 1:
-        raise RuntimeError("CONFIDENCE_THRESHOLD must be greater than 0 and at most 1.")
+    value = _float_env("CONFIDENCE_THRESHOLD", DEFAULT_CONFIDENCE_THRESHOLD)
+    if not MIN_CONFIDENCE_THRESHOLD <= value <= MAX_CONFIDENCE_THRESHOLD:
+        raise RuntimeError(
+            f"CONFIDENCE_THRESHOLD must be between {MIN_CONFIDENCE_THRESHOLD:.2f} and {MAX_CONFIDENCE_THRESHOLD:.2f}."
+        )
+    return round(value, 4)
+
+
+def _int_env(name: str, default: int, minimum: int = 32) -> int:
+    raw = os.environ.get(name)
+    if raw is None or raw.strip() == "":
+        return default
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise RuntimeError(f"{name} must be an integer.") from exc
+    if value < minimum:
+        raise RuntimeError(f"{name} must be at least {minimum}.")
     return value
 
 
@@ -84,7 +97,8 @@ def weights_hint(path: Path) -> str:
 class Settings:
     model_path: Path
     confidence_threshold: float
-    iou_threshold: float | None
+    iou_threshold: float
+    imgsz: int
     max_upload_bytes: int
     class_name: str
 
@@ -94,10 +108,12 @@ class Settings:
 
 
 def load_settings() -> Settings:
+    iou = _optional_unit_interval("IOU_THRESHOLD")
     return Settings(
         model_path=_model_path(),
         confidence_threshold=_confidence_threshold(),
-        iou_threshold=_optional_unit_interval("IOU_THRESHOLD"),
+        iou_threshold=DEFAULT_IOU_THRESHOLD if iou is None else iou,
+        imgsz=_int_env("INFERENCE_IMGSZ", DEFAULT_IMGSZ, minimum=320),
         max_upload_bytes=_max_upload_bytes(),
         class_name=EXPECTED_CLASS_NAME,
     )

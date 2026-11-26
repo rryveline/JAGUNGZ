@@ -1,10 +1,18 @@
 import { i as __toESM } from "../_runtime.mjs";
-import { K as require_react, b as require_jsx_runtime } from "../_libs/@tanstack/react-router+[...].mjs";
-import { a as LoaderCircle, i as RotateCcw, n as TriangleAlert, o as Leaf, r as ScanSearch, s as Download, t as Upload } from "../_libs/lucide-react.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/routes-z-auPW8d.js
+import { q as require_react, x as require_jsx_runtime, y as Link } from "../_libs/@tanstack/react-router+[...].mjs";
+import { a as RotateCcw, c as Leaf, d as ArrowLeft, i as ScanSearch, l as Download, n as Upload, r as TriangleAlert, s as LoaderCircle } from "../_libs/lucide-react.mjs";
+//#region node_modules/.nitro/vite/services/ssr/assets/detect-CAZPzg6I.js
 var import_react = /* @__PURE__ */ __toESM(require_react());
 var import_jsx_runtime = require_jsx_runtime();
+var MIN_CONFIDENCE_THRESHOLD = .05;
+var MAX_CONFIDENCE_THRESHOLD = .9;
+var DEFAULT_CONFIDENCE_THRESHOLD = .2;
+var CONFIDENCE_THRESHOLD_STEP = .05;
 var DEFAULT_MAX_UPLOAD_BYTES = 10485760;
+function formatThreshold(value) {
+	const pct = Math.round(value * 100);
+	return `${value.toFixed(2)} (${pct}%)`;
+}
 function formatConfidence(value) {
 	return `${(value <= 1 ? value * 100 : value).toFixed(1)}%`;
 }
@@ -48,6 +56,7 @@ function DetectionStudio() {
 	const [dragging, setDragging] = (0, import_react.useState)(false);
 	const [error, setError] = (0, import_react.useState)(null);
 	const [result, setResult] = (0, import_react.useState)(null);
+	const [confidenceThreshold, setConfidenceThreshold] = (0, import_react.useState)(DEFAULT_CONFIDENCE_THRESHOLD);
 	const maxBytes = status?.max_upload_bytes || 10485760;
 	(0, import_react.useEffect)(() => {
 		let cancelled = false;
@@ -111,29 +120,30 @@ function DetectionStudio() {
 		if (!file || phase === "running") return;
 		setPhase("running");
 		setError(null);
-		setResult(null);
 		try {
 			const body = new FormData();
 			body.append("file", file);
+			body.append("confidence_threshold", confidenceThreshold.toFixed(2));
 			const payload = await (await fetch("/api/detect", {
 				method: "POST",
 				body
 			})).json();
 			if (!payload.success) {
 				setError(payload.message || "Unable to process the uploaded image.");
-				setPhase("ready");
+				setPhase(result ? "done" : "ready");
 				return;
 			}
 			const mime = payload.annotated_mime || "image/jpeg";
 			setResult({
 				total: payload.total_detections,
+				thresholdUsed: typeof payload.confidence_threshold === "number" ? payload.confidence_threshold : confidenceThreshold,
 				detections: payload.detections,
 				annotatedUrl: `data:${mime};base64,${payload.annotated_image}`
 			});
 			setPhase("done");
 		} catch {
 			setError("The detection service could not be reached. Nothing was inferred locally in the browser.");
-			setPhase("ready");
+			setPhase(result ? "done" : "ready");
 		}
 	}
 	function downloadAnnotated() {
@@ -143,13 +153,23 @@ function DetectionStudio() {
 		link.download = "faw-annotated.jpg";
 		link.click();
 	}
-	const showCompare = phase === "done" && result && previewUrl;
+	const showCompare = (phase === "done" || phase === "running" && result !== null) && result && previewUrl;
 	const live = phase === "running" ? "Running detection." : error ? error : phase === "done" && result ? result.total === 0 ? "No suspected FAW damage detected." : `${result.total} detections.` : "";
 	return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
 		className: "min-h-screen",
-		children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("header", {
+		children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", {
 			className: "border-b border-line bg-surface",
-			children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+			children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
+				className: "mx-auto max-w-6xl px-4 pt-4 sm:px-6",
+				children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Link, {
+					to: "/",
+					className: "group inline-flex h-10 items-center gap-2 rounded-full border border-line bg-canvas px-4 text-sm font-semibold text-ink transition-colors duration-200 hover:border-primary hover:text-primary",
+					children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)(ArrowLeft, {
+						className: "size-4 transition-transform duration-300 ease-out group-hover:-translate-x-1",
+						"aria-hidden": "true"
+					}), "Back to home"]
+				})
+			}), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
 				className: "mx-auto flex max-w-6xl flex-col gap-5 px-4 py-5 sm:px-6 lg:flex-row lg:items-end lg:justify-between",
 				children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
 					className: "flex items-start gap-4",
@@ -161,12 +181,15 @@ function DetectionStudio() {
 						})
 					}), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
 						/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
-							className: "text-xs font-semibold tracking-widest text-accent uppercase",
-							children: "Corn leaf study"
+							className: "text-xs font-semibold text-accent",
+							children: "Data Mining and Warehousing - B"
 						}),
 						/* @__PURE__ */ (0, import_jsx_runtime.jsx)("h1", {
 							className: "font-display text-4xl leading-none font-semibold text-balance text-ink sm:text-5xl",
-							children: "Corn Leaf FAW Detection"
+							children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Link, {
+								to: "/",
+								children: "JAGUNGZ"
+							})
 						}),
 						/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
 							className: "mt-3 max-w-xl text-base leading-relaxed text-pretty text-muted",
@@ -174,7 +197,7 @@ function DetectionStudio() {
 						})
 					] })]
 				}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)(StatusPill, { status })]
-			})
+			})]
 		}), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("main", {
 			className: "mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8",
 			children: [
@@ -230,28 +253,35 @@ function DetectionStudio() {
 								}
 							}),
 							file && previewUrl ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
-								className: "flex flex-col gap-3 sm:flex-row",
-								children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", {
-									type: "button",
-									className: "inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground transition-opacity duration-200 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50",
-									onClick: () => void onDetect(),
+								className: "flex flex-col gap-3",
+								children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)(ConfidenceSlider, {
+									value: confidenceThreshold,
 									disabled: phase === "running",
-									children: [phase === "running" ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(LoaderCircle, {
-										className: "size-4 animate-spin motion-reduce:animate-none",
-										"aria-hidden": "true"
-									}) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ScanSearch, {
-										className: "size-4",
-										"aria-hidden": "true"
-									}), phase === "running" ? "Running detection" : "Detect"]
-								}), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", {
-									type: "button",
-									className: "inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-full border border-line bg-surface px-5 text-sm font-semibold text-ink transition-colors duration-200 hover:bg-canvas disabled:opacity-50",
-									onClick: resetAll,
-									disabled: phase === "running",
-									children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)(RotateCcw, {
-										className: "size-4",
-										"aria-hidden": "true"
-									}), "Reset"]
+									onChange: setConfidenceThreshold
+								}), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+									className: "flex flex-col gap-3 sm:flex-row",
+									children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", {
+										type: "button",
+										className: "inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground transition-opacity duration-200 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50",
+										onClick: () => void onDetect(),
+										disabled: phase === "running",
+										children: [phase === "running" ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(LoaderCircle, {
+											className: "size-4 animate-spin motion-reduce:animate-none",
+											"aria-hidden": "true"
+										}) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ScanSearch, {
+											className: "size-4",
+											"aria-hidden": "true"
+										}), phase === "running" ? "Running detection" : "Detect"]
+									}), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", {
+										type: "button",
+										className: "inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-full border border-line bg-surface px-5 text-sm font-semibold text-ink transition-colors duration-200 hover:bg-canvas disabled:opacity-50",
+										onClick: resetAll,
+										disabled: phase === "running",
+										children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)(RotateCcw, {
+											className: "size-4",
+											"aria-hidden": "true"
+										}), "Reset"]
+									})]
 								})]
 							}) : null
 						]
@@ -259,12 +289,17 @@ function DetectionStudio() {
 						className: "flex flex-col gap-4 rounded-2xl border border-line bg-surface p-5 shadow-sm",
 						children: [showCompare && result ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ResultsPanel, {
 							result,
+							threshold: confidenceThreshold,
+							running: phase === "running",
+							onThresholdChange: setConfidenceThreshold,
+							onRedetect: () => void onDetect(),
 							onDownload: downloadAnnotated,
 							onReset: resetAll
 						}) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)(SpecPanel, {
 							file,
 							status,
-							running: phase === "running"
+							running: phase === "running",
+							threshold: confidenceThreshold
 						}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
 							className: "text-sm leading-relaxed text-pretty text-muted",
 							children: "One class only: infected, meaning suspected fall armyworm damage on a corn leaf. No boxes does not mean the leaf is healthy."
@@ -350,8 +385,50 @@ function ImageFrame({ title, src, alt, scanning = false }) {
 		})]
 	});
 }
-function SpecPanel({ file, status, running }) {
-	const threshold = status?.confidence_threshold == null ? "Not reported" : status.confidence_threshold.toFixed(2);
+function ConfidenceSlider({ value, disabled, onChange, compact = false }) {
+	const sliderId = (0, import_react.useId)();
+	return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+		className: compact ? "rounded-2xl bg-canvas p-3.5" : "rounded-2xl border border-line bg-surface p-4 shadow-sm",
+		children: [
+			/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+				className: "flex items-center justify-between gap-3",
+				children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", {
+					htmlFor: sliderId,
+					className: "text-sm font-semibold text-ink",
+					children: "Confidence Threshold"
+				}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
+					className: "shrink-0 whitespace-nowrap rounded-full bg-primary/10 px-2.5 py-0.5 text-sm font-semibold text-primary tabular-nums",
+					children: formatThreshold(value)
+				})]
+			}),
+			/* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", {
+				id: sliderId,
+				type: "range",
+				min: MIN_CONFIDENCE_THRESHOLD,
+				max: MAX_CONFIDENCE_THRESHOLD,
+				step: CONFIDENCE_THRESHOLD_STEP,
+				value,
+				disabled,
+				"aria-valuetext": formatThreshold(value),
+				onChange: (event) => onChange(Number(event.target.value)),
+				className: "mt-3 h-2 w-full cursor-pointer appearance-none rounded-full bg-line accent-primary disabled:cursor-not-allowed disabled:opacity-50"
+			}),
+			/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+				className: "mt-1.5 flex items-center justify-between text-xs text-muted tabular-nums",
+				children: [
+					/* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "0.05" }),
+					/* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Default 0.20" }),
+					/* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "0.90" })
+				]
+			}),
+			/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
+				className: "mt-2 text-xs leading-relaxed text-pretty text-muted",
+				children: "Lower threshold allows more suspected damage to be detected, but may increase False Positives."
+			})
+		]
+	});
+}
+function SpecPanel({ file, status, running, threshold }) {
 	return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
 		className: "flex flex-col gap-4",
 		children: [
@@ -367,7 +444,7 @@ function SpecPanel({ file, status, running }) {
 				}),
 				file ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", {
 					className: "mt-1 text-sm text-muted",
-					children: [formatBytes(file.size), " · confirm the preview, then detect"]
+					children: [formatBytes(file.size), " · adjust threshold, then detect"]
 				}) : null
 			] }),
 			/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("dl", {
@@ -388,28 +465,41 @@ function SpecPanel({ file, status, running }) {
 						children: "Threshold"
 					}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("dd", {
 						className: "mt-1 font-semibold text-ink tabular-nums",
-						children: threshold
+						children: formatThreshold(threshold)
 					})]
 				})]
 			}),
-			/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", {
+			/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
 				className: "text-sm leading-relaxed text-pretty text-muted",
-				children: [status?.message || "Checking whether the trained weights are available.", " The threshold is a placeholder until validation selects the final cutoff."]
+				children: status?.message || "Checking whether the trained weights are available."
 			})
 		]
 	});
 }
-function ResultsPanel({ result, onDownload, onReset }) {
+function ResultsPanel({ result, threshold, running, onThresholdChange, onRedetect, onDownload, onReset }) {
+	const thresholdChanged = Math.abs(threshold - result.thresholdUsed) > 1e-4;
 	return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
 		className: "flex flex-col gap-4",
 		children: [
-			/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
-				className: "text-xs font-semibold tracking-widest text-muted uppercase",
-				children: "Total detections"
-			}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
-				className: "font-display text-6xl leading-none text-ink tabular-nums",
-				children: result.total
-			})] }),
+			/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+				className: "flex items-end justify-between gap-3",
+				children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
+					className: "text-xs font-semibold tracking-widest text-muted uppercase",
+					children: "Total detections"
+				}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
+					className: "font-display text-6xl leading-none text-ink tabular-nums",
+					children: result.total
+				})] }), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+					className: "rounded-2xl bg-canvas px-3 py-2 text-right",
+					children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
+						className: "text-xs text-muted",
+						children: "Threshold used"
+					}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
+						className: "text-sm font-semibold text-ink tabular-nums",
+						children: formatThreshold(result.thresholdUsed)
+					})]
+				})]
+			}),
 			result.total === 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
 				className: "rounded-2xl bg-canvas px-4 py-3",
 				children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
@@ -417,10 +507,10 @@ function ResultsPanel({ result, onDownload, onReset }) {
 					children: "No suspected FAW damage detected."
 				}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
 					className: "mt-1 text-sm leading-relaxed text-muted",
-					children: "The annotated image has no boxes. That is not a health verdict."
+					children: "The annotated image has no boxes. Try lowering the confidence threshold if damage is faint or small."
 				})]
 			}) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("ol", {
-				className: "flex max-h-80 flex-col gap-2 overflow-auto",
+				className: "flex max-h-64 flex-col gap-2 overflow-auto",
 				children: result.detections.map((detection, index) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("li", {
 					className: "rounded-2xl bg-canvas px-3 py-3",
 					children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", {
@@ -444,10 +534,30 @@ function ResultsPanel({ result, onDownload, onReset }) {
 					})]
 				}, `${detection.bbox.join("-")}-${index}`))
 			}),
+			/* @__PURE__ */ (0, import_jsx_runtime.jsx)(ConfidenceSlider, {
+				value: threshold,
+				disabled: running,
+				onChange: onThresholdChange,
+				compact: true
+			}),
+			thresholdChanged || running ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", {
+				type: "button",
+				className: "inline-flex h-12 items-center justify-center gap-2 rounded-full bg-accent px-5 text-sm font-semibold text-primary-foreground transition-opacity duration-200 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50",
+				onClick: onRedetect,
+				disabled: running,
+				children: [running ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(LoaderCircle, {
+					className: "size-4 animate-spin motion-reduce:animate-none",
+					"aria-hidden": "true"
+				}) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ScanSearch, {
+					className: "size-4",
+					"aria-hidden": "true"
+				}), running ? "Running detection" : `Re-detect at ${threshold.toFixed(2)}`]
+			}) : null,
 			/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", {
 				type: "button",
-				className: "inline-flex h-12 items-center justify-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground hover:opacity-90",
+				className: "inline-flex h-12 items-center justify-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50",
 				onClick: onDownload,
+				disabled: running,
 				children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)(Download, {
 					className: "size-4",
 					"aria-hidden": "true"
@@ -455,8 +565,9 @@ function ResultsPanel({ result, onDownload, onReset }) {
 			}),
 			/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", {
 				type: "button",
-				className: "inline-flex h-12 items-center justify-center gap-2 rounded-full border border-line bg-surface px-5 text-sm font-semibold text-ink hover:bg-canvas",
+				className: "inline-flex h-12 items-center justify-center gap-2 rounded-full border border-line bg-surface px-5 text-sm font-semibold text-ink hover:bg-canvas disabled:opacity-50",
 				onClick: onReset,
+				disabled: running,
 				children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)(RotateCcw, {
 					className: "size-4",
 					"aria-hidden": "true"
@@ -465,8 +576,8 @@ function ResultsPanel({ result, onDownload, onReset }) {
 		]
 	});
 }
-function Home() {
+function DetectPage() {
 	return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(DetectionStudio, {});
 }
 //#endregion
-export { Home as component };
+export { DetectPage as component };

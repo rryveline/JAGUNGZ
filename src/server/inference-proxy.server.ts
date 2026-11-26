@@ -96,12 +96,36 @@ export async function proxyStatus(): Promise<Response> {
   }
 }
 
+const MIN_CONFIDENCE_THRESHOLD = 0.05;
+const MAX_CONFIDENCE_THRESHOLD = 0.9;
+const DEFAULT_CONFIDENCE_THRESHOLD = 0.2;
+
+function parseConfidenceThreshold(raw: FormDataEntryValue | null): { value: number } | { error: string } {
+  if (raw === null) return { value: DEFAULT_CONFIDENCE_THRESHOLD };
+  if (typeof raw !== "string") {
+    return { error: "Confidence threshold must be a number between 0.05 and 0.90." };
+  }
+  const trimmed = raw.trim();
+  if (!trimmed) return { value: DEFAULT_CONFIDENCE_THRESHOLD };
+  const parsed = Number(trimmed);
+  if (!Number.isFinite(parsed) || parsed < MIN_CONFIDENCE_THRESHOLD - 1e-9 || parsed > MAX_CONFIDENCE_THRESHOLD + 1e-9) {
+    return { error: "Confidence threshold must be between 0.05 and 0.90." };
+  }
+  const clamped = Math.min(MAX_CONFIDENCE_THRESHOLD, Math.max(MIN_CONFIDENCE_THRESHOLD, parsed));
+  return { value: Number(clamped.toFixed(4)) };
+}
+
 export async function proxyDetect(request: Request): Promise<Response> {
   let incoming: FormData;
   try {
     incoming = await request.formData();
   } catch {
     return Response.json({ success: false, message: "No file is selected." }, { status: 400 });
+  }
+
+  const thresholdResult = parseConfidenceThreshold(incoming.get("confidence_threshold"));
+  if ("error" in thresholdResult) {
+    return Response.json({ success: false, message: thresholdResult.error }, { status: 400 });
   }
 
   const file = incoming.get("file");
@@ -126,7 +150,7 @@ export async function proxyDetect(request: Request): Promise<Response> {
 
   try {
     await writeFile(path, Buffer.from(await file.arrayBuffer()));
-    const result = await runCli(["detect", path], 120_000);
+    const result = await runCli(["detect", path, "--conf", String(thresholdResult.value)], 120_000);
     const payload = parsePayload(result.stdout);
     if (!payload) {
       return Response.json(

@@ -2,9 +2,14 @@ import { useEffect, useId, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft, Download, Leaf, Loader2, RotateCcw, ScanSearch, TriangleAlert, Upload } from "lucide-react";
 import {
+  CONFIDENCE_THRESHOLD_STEP,
+  DEFAULT_CONFIDENCE_THRESHOLD,
   DEFAULT_MAX_UPLOAD_BYTES,
+  MAX_CONFIDENCE_THRESHOLD,
+  MIN_CONFIDENCE_THRESHOLD,
   formatBytes,
   formatConfidence,
+  formatThreshold,
   validateLeafImage,
   type DetectResponse,
   type ServiceStatus,
@@ -14,6 +19,7 @@ type Phase = "empty" | "ready" | "running" | "done";
 
 type ResultView = {
   total: number;
+  thresholdUsed: number;
   detections: DetectSuccessDetections;
   annotatedUrl: string;
 };
@@ -37,6 +43,7 @@ export function DetectionStudio() {
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ResultView | null>(null);
+  const [confidenceThreshold, setConfidenceThreshold] = useState<number>(DEFAULT_CONFIDENCE_THRESHOLD);
 
   const maxBytes = status?.max_upload_bytes || DEFAULT_MAX_UPLOAD_BYTES;
 
@@ -110,27 +117,31 @@ export function DetectionStudio() {
     if (!file || phase === "running") return;
     setPhase("running");
     setError(null);
-    setResult(null);
     try {
       const body = new FormData();
       body.append("file", file);
+      body.append("confidence_threshold", confidenceThreshold.toFixed(2));
       const response = await fetch("/api/detect", { method: "POST", body });
       const payload = (await response.json()) as DetectResponse;
       if (!payload.success) {
         setError(payload.message || "Unable to process the uploaded image.");
-        setPhase("ready");
+        setPhase(result ? "done" : "ready");
         return;
       }
       const mime = payload.annotated_mime || "image/jpeg";
       setResult({
         total: payload.total_detections,
+        thresholdUsed:
+          typeof payload.confidence_threshold === "number"
+            ? payload.confidence_threshold
+            : confidenceThreshold,
         detections: payload.detections,
         annotatedUrl: `data:${mime};base64,${payload.annotated_image}`,
       });
       setPhase("done");
     } catch {
       setError("The detection service could not be reached. Nothing was inferred locally in the browser.");
-      setPhase("ready");
+      setPhase(result ? "done" : "ready");
     }
   }
 
@@ -142,7 +153,7 @@ export function DetectionStudio() {
     link.click();
   }
 
-  const showCompare = phase === "done" && result && previewUrl;
+  const showCompare = (phase === "done" || (phase === "running" && result !== null)) && result && previewUrl;
   const live =
     phase === "running"
       ? "Running detection."
@@ -232,29 +243,36 @@ export function DetectionStudio() {
                 }}
               />
               {file && previewUrl ? (
-                <div className="flex flex-col gap-3 sm:flex-row">
-                  <button
-                    type="button"
-                    className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground transition-opacity duration-200 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                    onClick={() => void onDetect()}
+                <div className="flex flex-col gap-3">
+                  <ConfidenceSlider
+                    value={confidenceThreshold}
                     disabled={phase === "running"}
-                  >
-                    {phase === "running" ? (
-                      <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
-                    ) : (
-                      <ScanSearch className="size-4" aria-hidden="true" />
-                    )}
-                    {phase === "running" ? "Running detection" : "Detect"}
-                  </button>
-                  <button
-                    type="button"
-                    className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-full border border-line bg-surface px-5 text-sm font-semibold text-ink transition-colors duration-200 hover:bg-canvas disabled:opacity-50"
-                    onClick={resetAll}
-                    disabled={phase === "running"}
-                  >
-                    <RotateCcw className="size-4" aria-hidden="true" />
-                    Reset
-                  </button>
+                    onChange={setConfidenceThreshold}
+                  />
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <button
+                      type="button"
+                      className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground transition-opacity duration-200 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                      onClick={() => void onDetect()}
+                      disabled={phase === "running"}
+                    >
+                      {phase === "running" ? (
+                        <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+                      ) : (
+                        <ScanSearch className="size-4" aria-hidden="true" />
+                      )}
+                      {phase === "running" ? "Running detection" : "Detect"}
+                    </button>
+                    <button
+                      type="button"
+                      className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-full border border-line bg-surface px-5 text-sm font-semibold text-ink transition-colors duration-200 hover:bg-canvas disabled:opacity-50"
+                      onClick={resetAll}
+                      disabled={phase === "running"}
+                    >
+                      <RotateCcw className="size-4" aria-hidden="true" />
+                      Reset
+                    </button>
+                  </div>
                 </div>
               ) : null}
             </section>
@@ -262,9 +280,17 @@ export function DetectionStudio() {
 
           <aside className="flex flex-col gap-4 rounded-2xl border border-line bg-surface p-5 shadow-sm">
             {showCompare && result ? (
-              <ResultsPanel result={result} onDownload={downloadAnnotated} onReset={resetAll} />
+              <ResultsPanel
+                result={result}
+                threshold={confidenceThreshold}
+                running={phase === "running"}
+                onThresholdChange={setConfidenceThreshold}
+                onRedetect={() => void onDetect()}
+                onDownload={downloadAnnotated}
+                onReset={resetAll}
+              />
             ) : (
-              <SpecPanel file={file} status={status} running={phase === "running"} />
+              <SpecPanel file={file} status={status} running={phase === "running"} threshold={confidenceThreshold} />
             )}
             <p className="text-sm leading-relaxed text-pretty text-muted">
               One class only: infected, meaning suspected fall armyworm damage on a corn leaf. No boxes does not mean the leaf is healthy.
@@ -379,17 +405,63 @@ function ImageFrame({
   );
 }
 
+function ConfidenceSlider({
+  value,
+  disabled,
+  onChange,
+  compact = false,
+}: {
+  value: number;
+  disabled?: boolean;
+  onChange: (next: number) => void;
+  compact?: boolean;
+}) {
+  const sliderId = useId();
+  return (
+    <div className={compact ? "rounded-2xl bg-canvas p-3.5" : "rounded-2xl border border-line bg-surface p-4 shadow-sm"}>
+      <div className="flex items-center justify-between gap-3">
+        <label htmlFor={sliderId} className="text-sm font-semibold text-ink">
+          Confidence Threshold
+        </label>
+        <span className="shrink-0 whitespace-nowrap rounded-full bg-primary/10 px-2.5 py-0.5 text-sm font-semibold text-primary tabular-nums">
+          {formatThreshold(value)}
+        </span>
+      </div>
+      <input
+        id={sliderId}
+        type="range"
+        min={MIN_CONFIDENCE_THRESHOLD}
+        max={MAX_CONFIDENCE_THRESHOLD}
+        step={CONFIDENCE_THRESHOLD_STEP}
+        value={value}
+        disabled={disabled}
+        aria-valuetext={formatThreshold(value)}
+        onChange={(event) => onChange(Number(event.target.value))}
+        className="mt-3 h-2 w-full cursor-pointer appearance-none rounded-full bg-line accent-primary disabled:cursor-not-allowed disabled:opacity-50"
+      />
+      <div className="mt-1.5 flex items-center justify-between text-xs text-muted tabular-nums">
+        <span>0.05</span>
+        <span>Default 0.20</span>
+        <span>0.90</span>
+      </div>
+      <p className="mt-2 text-xs leading-relaxed text-pretty text-muted">
+        Lower threshold allows more suspected damage to be detected, but may increase False Positives.
+      </p>
+    </div>
+  );
+}
+
 function SpecPanel({
   file,
   status,
   running,
+  threshold,
 }: {
   file: File | null;
   status: ServiceStatus | null;
   running: boolean;
+  threshold: number;
 }) {
-  const threshold =
-    status?.confidence_threshold == null ? "Not reported" : status.confidence_threshold.toFixed(2);
   return (
     <div className="flex flex-col gap-4">
       <div>
@@ -397,7 +469,7 @@ function SpecPanel({
         <h2 className="mt-1 truncate font-display text-3xl text-ink" title={file?.name || undefined}>
           {file ? file.name : "Waiting for a leaf"}
         </h2>
-        {file ? <p className="mt-1 text-sm text-muted">{formatBytes(file.size)} · confirm the preview, then detect</p> : null}
+        {file ? <p className="mt-1 text-sm text-muted">{formatBytes(file.size)} · adjust threshold, then detect</p> : null}
       </div>
       <dl className="grid grid-cols-2 gap-3 text-sm">
         <div className="rounded-2xl bg-canvas px-3 py-3">
@@ -406,11 +478,11 @@ function SpecPanel({
         </div>
         <div className="rounded-2xl bg-canvas px-3 py-3">
           <dt className="text-muted">Threshold</dt>
-          <dd className="mt-1 font-semibold text-ink tabular-nums">{threshold}</dd>
+          <dd className="mt-1 font-semibold text-ink tabular-nums">{formatThreshold(threshold)}</dd>
         </div>
       </dl>
       <p className="text-sm leading-relaxed text-pretty text-muted">
-        {status?.message || "Checking whether the trained weights are available."} The threshold is a placeholder until validation selects the final cutoff.
+        {status?.message || "Checking whether the trained weights are available."}
       </p>
     </div>
   );
@@ -418,28 +490,43 @@ function SpecPanel({
 
 function ResultsPanel({
   result,
+  threshold,
+  running,
+  onThresholdChange,
+  onRedetect,
   onDownload,
   onReset,
 }: {
   result: ResultView;
+  threshold: number;
+  running: boolean;
+  onThresholdChange: (next: number) => void;
+  onRedetect: () => void;
   onDownload: () => void;
   onReset: () => void;
 }) {
+  const thresholdChanged = Math.abs(threshold - result.thresholdUsed) > 1e-4;
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <p className="text-xs font-semibold tracking-widest text-muted uppercase">Total detections</p>
-        <p className="font-display text-6xl leading-none text-ink tabular-nums">{result.total}</p>
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold tracking-widest text-muted uppercase">Total detections</p>
+          <p className="font-display text-6xl leading-none text-ink tabular-nums">{result.total}</p>
+        </div>
+        <div className="rounded-2xl bg-canvas px-3 py-2 text-right">
+          <p className="text-xs text-muted">Threshold used</p>
+          <p className="text-sm font-semibold text-ink tabular-nums">{formatThreshold(result.thresholdUsed)}</p>
+        </div>
       </div>
       {result.total === 0 ? (
         <div className="rounded-2xl bg-canvas px-4 py-3">
           <p className="font-semibold text-ink">No suspected FAW damage detected.</p>
           <p className="mt-1 text-sm leading-relaxed text-muted">
-            The annotated image has no boxes. That is not a health verdict.
+            The annotated image has no boxes. Try lowering the confidence threshold if damage is faint or small.
           </p>
         </div>
       ) : (
-        <ol className="flex max-h-80 flex-col gap-2 overflow-auto">
+        <ol className="flex max-h-64 flex-col gap-2 overflow-auto">
           {result.detections.map((detection, index) => (
             <li key={`${detection.bbox.join("-")}-${index}`} className="rounded-2xl bg-canvas px-3 py-3">
               <p className="text-sm font-semibold text-ink">Detection {index + 1}</p>
@@ -457,18 +544,41 @@ function ResultsPanel({
           ))}
         </ol>
       )}
+      <ConfidenceSlider
+        value={threshold}
+        disabled={running}
+        onChange={onThresholdChange}
+        compact
+      />
+      {thresholdChanged || running ? (
+        <button
+          type="button"
+          className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-accent px-5 text-sm font-semibold text-primary-foreground transition-opacity duration-200 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          onClick={onRedetect}
+          disabled={running}
+        >
+          {running ? (
+            <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+          ) : (
+            <ScanSearch className="size-4" aria-hidden="true" />
+          )}
+          {running ? "Running detection" : `Re-detect at ${threshold.toFixed(2)}`}
+        </button>
+      ) : null}
       <button
         type="button"
-        className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground hover:opacity-90"
+        className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
         onClick={onDownload}
+        disabled={running}
       >
         <Download className="size-4" aria-hidden="true" />
         Download annotated image
       </button>
       <button
         type="button"
-        className="inline-flex h-12 items-center justify-center gap-2 rounded-full border border-line bg-surface px-5 text-sm font-semibold text-ink hover:bg-canvas"
+        className="inline-flex h-12 items-center justify-center gap-2 rounded-full border border-line bg-surface px-5 text-sm font-semibold text-ink hover:bg-canvas disabled:opacity-50"
         onClick={onReset}
+        disabled={running}
       >
         <RotateCcw className="size-4" aria-hidden="true" />
         Detect another image

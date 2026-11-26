@@ -7,14 +7,30 @@ prediction fails with an explicit error.
 from __future__ import annotations
 
 import logging
+import math
 import threading
 from dataclasses import dataclass
 
 from PIL import Image
 
-from backend.core.config import settings
+from backend.core.config import (
+    MAX_CONFIDENCE_THRESHOLD,
+    MIN_CONFIDENCE_THRESHOLD,
+    settings,
+)
 
 logger = logging.getLogger(__name__)
+
+
+def validate_confidence_threshold(value: float | None) -> float:
+    """Validate user-supplied confidence threshold against [0.05, 0.90]."""
+    if value is None:
+        return settings.confidence_threshold
+    if not math.isfinite(value) or value < MIN_CONFIDENCE_THRESHOLD - 1e-9 or value > MAX_CONFIDENCE_THRESHOLD + 1e-9:
+        raise ValueError(
+            f"Confidence threshold must be between {MIN_CONFIDENCE_THRESHOLD:.2f} and {MAX_CONFIDENCE_THRESHOLD:.2f}."
+        )
+    return round(min(MAX_CONFIDENCE_THRESHOLD, max(MIN_CONFIDENCE_THRESHOLD, value)), 4)
 
 
 class InferenceUnavailable(Exception):
@@ -58,12 +74,13 @@ class InferenceService:
             self._reload_if_needed()
             return self._status_payload()
 
-    def predict(self, image: Image.Image) -> list[Detection]:
+    def predict(self, image: Image.Image, confidence_threshold: float | None = None) -> list[Detection]:
+        conf = validate_confidence_threshold(confidence_threshold)
         with self._lock:
             self._reload_if_needed()
             if self._model is None:
                 raise InferenceUnavailable(self._message)
-            return self._predict_locked(image)
+            return self._predict_locked(image, conf)
 
     def _status_payload(self) -> dict:
         return {
@@ -72,6 +89,7 @@ class InferenceService:
             "class_name": settings.class_name,
             "confidence_threshold": settings.confidence_threshold,
             "iou_threshold": settings.iou_threshold,
+            "imgsz": settings.imgsz,
             "max_upload_bytes": settings.max_upload_bytes,
             "weights_hint": settings.weights_hint,
             "message": self._message,
@@ -120,15 +138,15 @@ class InferenceService:
         self._message = "Custom YOLO26 weights are loaded."
         logger.info("Loaded YOLO weights from %s", path)
 
-    def _predict_locked(self, image: Image.Image) -> list[Detection]:
+    def _predict_locked(self, image: Image.Image, conf: float) -> list[Detection]:
         predict_kwargs: dict = {
             "source": image,
-            "conf": settings.confidence_threshold,
+            "conf": conf,
+            "iou": settings.iou_threshold,
+            "imgsz": settings.imgsz,
             "verbose": False,
             "save": False,
         }
-        if settings.iou_threshold is not None:
-            predict_kwargs["iou"] = settings.iou_threshold
         results = self._model.predict(**predict_kwargs)
         if not results:
             return []

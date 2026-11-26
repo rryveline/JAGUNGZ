@@ -3,18 +3,23 @@
 Prints one JSON object to stdout. Does not open a network port.
 
   python -m backend.cli status
-  python -m backend.cli detect /path/to/leaf.jpg
+  python -m backend.cli detect /path/to/leaf.jpg --conf 0.20
 """
 
 from __future__ import annotations
 
+import argparse
 import base64
 import json
 import logging
 import sys
 
 from backend.services.image_processing import ImageRejected, decode_image, render_annotated_jpeg
-from backend.services.inference import InferenceUnavailable, get_inference_service
+from backend.services.inference import (
+    InferenceUnavailable,
+    get_inference_service,
+    validate_confidence_threshold,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
@@ -29,7 +34,13 @@ def status() -> int:
     return 0
 
 
-def detect(path: str) -> int:
+def detect(path: str, confidence_threshold: float | None = None) -> int:
+    try:
+        conf = validate_confidence_threshold(confidence_threshold)
+    except ValueError as exc:
+        _emit({"success": False, "status": 400, "message": str(exc)})
+        return 0
+
     with open(path, "rb") as handle:
         raw = handle.read()
     if not raw:
@@ -43,7 +54,7 @@ def detect(path: str) -> int:
 
     service = get_inference_service()
     try:
-        detections = service.predict(image)
+        detections = service.predict(image, confidence_threshold=conf)
     except InferenceUnavailable as exc:
         _emit({"success": False, "status": 503, "message": str(exc)})
         return 0
@@ -63,6 +74,7 @@ def detect(path: str) -> int:
         {
             "success": True,
             "status": 200,
+            "confidence_threshold": conf,
             "total_detections": len(detections),
             "detections": [item.to_dict() for item in detections],
             "annotated_image": base64.b64encode(annotated).decode("ascii"),
@@ -73,11 +85,19 @@ def detect(path: str) -> int:
 
 
 def main() -> int:
-    command = sys.argv[1] if len(sys.argv) > 1 else "status"
-    if command == "status":
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument("command", nargs="?", default="status")
+    parser.add_argument("path", nargs="?")
+    parser.add_argument("--conf", type=float, default=None)
+    args, unknown = parser.parse_known_args(sys.argv[1:])
+
+    if unknown:
+        _emit({"success": False, "status": 400, "message": "Invalid detection arguments."})
+        return 1
+    if args.command == "status":
         return status()
-    if command == "detect" and len(sys.argv) > 2:
-        return detect(sys.argv[2])
+    if args.command == "detect" and args.path:
+        return detect(args.path, confidence_threshold=args.conf)
     _emit({"success": False, "status": 400, "message": "Unable to process the uploaded image."})
     return 1
 

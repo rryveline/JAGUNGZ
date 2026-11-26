@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import io
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 Image.MAX_IMAGE_PIXELS = 48_000_000
 
@@ -32,7 +32,9 @@ def decode_image(raw: bytes) -> Image.Image:
     try:
         with Image.open(io.BytesIO(raw)) as incoming:
             incoming.load()
-            image = incoming.convert("RGB")
+            # Normalize EXIF orientation so bounding boxes align with browser rendering.
+            transposed = ImageOps.exif_transpose(incoming)
+            image = transposed.convert("RGB")
     except Image.DecompressionBombError as exc:
         raise ImageRejected("The file is corrupted or cannot be read.") from exc
     except Exception as exc:

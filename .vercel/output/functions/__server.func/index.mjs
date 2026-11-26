@@ -12,7 +12,7 @@ var install_page_default = "<!DOCTYPE html>\n<html lang=\"en\" class=\"device-de
 //#endregion
 //#region \0virtual:grok-og-identity
 var grokOgIdentity = { "site": {
-	"title": "Corn Leaf FAW Detection",
+	"title": "JAGUNGZ",
 	"card": "custom",
 	"image": "/og.jpg"
 } };
@@ -467,11 +467,11 @@ var findRouteRules = /* @__PURE__ */ (() => {
 		return r;
 	};
 })();
-var _lazy_IO091Z = defineLazyEventHandler(() => import("./_chunks/ssr-renderer.mjs"));
+var _lazy_g_piTa = defineLazyEventHandler(() => import("./_chunks/ssr-renderer.mjs"));
 var findRoute = /* @__PURE__ */ (() => {
 	const data = {
 		route: "/**",
-		handler: _lazy_IO091Z
+		handler: _lazy_g_piTa
 	};
 	return ((_m, p) => {
 		return {

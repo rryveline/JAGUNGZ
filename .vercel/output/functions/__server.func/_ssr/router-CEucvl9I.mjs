@@ -1,9 +1,14 @@
 import { i as __toESM, n as __exportAll } from "../_runtime.mjs";
-import { K as require_react, _ as createFileRoute, b as require_jsx_runtime, d as Scripts, f as HeadContent, g as lazyRouteComponent, h as Outlet, m as createRouter, v as createRootRoute, y as useRouter } from "../_libs/@tanstack/react-router+[...].mjs";
-import { n as TriangleAlert } from "../_libs/lucide-react.mjs";
+import { _ as createFileRoute, b as useRouter, d as Scripts, f as HeadContent, g as lazyRouteComponent, h as Outlet, m as createRouter, q as require_react, v as createRootRoute, x as require_jsx_runtime } from "../_libs/@tanstack/react-router+[...].mjs";
+import { r as TriangleAlert } from "../_libs/lucide-react.mjs";
 import { a as union, i as string, n as number, r as object, t as literal } from "../_libs/zod.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/router-R4FXGc3G.js
-var router_R4FXGc3G_exports = /* @__PURE__ */ __exportAll({ getRouter: () => getRouter });
+import { randomUUID } from "node:crypto";
+import { join } from "node:path";
+import { spawn } from "node:child_process";
+import { unlink, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+//#region node_modules/.nitro/vite/services/ssr/assets/router-CEucvl9I.js
+var router_CEucvl9I_exports = /* @__PURE__ */ __exportAll({ getRouter: () => getRouter });
 var import_react = /* @__PURE__ */ __toESM(require_react());
 var import_jsx_runtime = require_jsx_runtime();
 var FALLBACK_MESSAGE = "An unexpected error occurred. Try reloading the page.";
@@ -331,9 +336,9 @@ function PreviewHostBridge() {
 	}, [router]);
 	return null;
 }
-var styles_default = "/assets/styles-DhaMpl2Z.css";
-var APP_NAME = "Corn Leaf FAW Detection";
-var Route$3 = createRootRoute({
+var styles_default = "/assets/styles-C_g0mP48.css";
+var APP_NAME = "JAGUNGZ";
+var Route$4 = createRootRoute({
 	head: () => ({
 		meta: [
 			{ charSet: "utf-8" },
@@ -397,9 +402,10 @@ var Route$3 = createRootRoute({
 		})]
 	})
 });
-var $$splitComponentImporter = () => import("./routes-z-auPW8d.mjs");
-var Route$2 = createFileRoute("/")({ component: lazyRouteComponent($$splitComponentImporter, "component") });
-var INFERENCE_ORIGIN = (process.env.INFERENCE_URL || "http://127.0.0.1:8090").replace(/\/$/, "");
+var $$splitComponentImporter$1 = () => import("./routes-CLxOCQ5c.mjs");
+var Route$3 = createFileRoute("/")({ component: lazyRouteComponent($$splitComponentImporter$1, "component") });
+var $$splitComponentImporter = () => import("./detect-CAZPzg6I.mjs");
+var Route$2 = createFileRoute("/detect")({ component: lazyRouteComponent($$splitComponentImporter, "component") });
 var OFFLINE_STATUS = {
 	service: "unavailable",
 	model_ready: false,
@@ -408,25 +414,77 @@ var OFFLINE_STATUS = {
 	iou_threshold: null,
 	max_upload_bytes: 10485760,
 	weights_hint: "backend/models/best.pt",
-	message: "The YOLO26 inference service is offline. Detections are reported only from your trained model — sample boxes are not substituted."
+	message: "The YOLO26 inference runtime is unavailable. Detections are reported only from your trained model — sample boxes are not substituted."
 };
-async function readJson(response) {
-	const text = await response.text();
+function runCli(args, timeoutMs) {
+	return new Promise((resolve, reject) => {
+		const projectRoot = process.cwd();
+		const pythonBin = process.env.PYTHON_BIN || join(projectRoot, ".venv", "bin", "python");
+		const child = spawn(pythonBin, [
+			"-m",
+			"backend.cli",
+			...args
+		], {
+			cwd: projectRoot,
+			env: {
+				...process.env,
+				PYTHONPATH: projectRoot
+			}
+		});
+		let stdout = "";
+		const timer = setTimeout(() => {
+			child.kill("SIGKILL");
+			const error = /* @__PURE__ */ new Error("timeout");
+			error.name = "TimeoutError";
+			reject(error);
+		}, timeoutMs);
+		child.stdout.setEncoding("utf8");
+		child.stdout.on("data", (chunk) => {
+			stdout += chunk;
+		});
+		child.on("error", (error) => {
+			clearTimeout(timer);
+			reject(error);
+		});
+		child.on("close", (code) => {
+			clearTimeout(timer);
+			resolve({
+				code: code ?? 1,
+				stdout
+			});
+		});
+	});
+}
+function parsePayload(stdout) {
+	const line = stdout.split("\n").map((item) => item.trim()).filter(Boolean).at(-1);
+	if (!line) return null;
 	try {
-		return JSON.parse(text);
+		const payload = JSON.parse(line);
+		return payload && typeof payload === "object" ? payload : null;
 	} catch {
 		return null;
 	}
 }
 async function proxyStatus() {
 	try {
-		const response = await fetch(`${INFERENCE_ORIGIN}/api/status`, { signal: AbortSignal.timeout(4e3) });
-		const payload = await readJson(response);
-		if (!response.ok || !payload || typeof payload !== "object") return Response.json(OFFLINE_STATUS);
+		const payload = parsePayload((await runCli(["status"], 8e3)).stdout);
+		if (!payload) return Response.json(OFFLINE_STATUS);
 		return Response.json(payload);
 	} catch {
 		return Response.json(OFFLINE_STATUS);
 	}
+}
+var MIN_CONFIDENCE_THRESHOLD = .05;
+var MAX_CONFIDENCE_THRESHOLD = .9;
+var DEFAULT_CONFIDENCE_THRESHOLD = .2;
+function parseConfidenceThreshold(raw) {
+	if (raw === null) return { value: DEFAULT_CONFIDENCE_THRESHOLD };
+	if (typeof raw !== "string") return { error: "Confidence threshold must be a number between 0.05 and 0.90." };
+	const trimmed = raw.trim();
+	if (!trimmed) return { value: DEFAULT_CONFIDENCE_THRESHOLD };
+	const parsed = Number(trimmed);
+	if (!Number.isFinite(parsed) || parsed < .049999999 || parsed > .900000001) return { error: "Confidence threshold must be between 0.05 and 0.90." };
+	return { value: Number(Math.min(MAX_CONFIDENCE_THRESHOLD, Math.max(MIN_CONFIDENCE_THRESHOLD, parsed)).toFixed(4)) };
 }
 async function proxyDetect(request) {
 	let incoming;
@@ -438,6 +496,11 @@ async function proxyDetect(request) {
 			message: "No file is selected."
 		}, { status: 400 });
 	}
+	const thresholdResult = parseConfidenceThreshold(incoming.get("confidence_threshold"));
+	if ("error" in thresholdResult) return Response.json({
+		success: false,
+		message: thresholdResult.error
+	}, { status: 400 });
 	const file = incoming.get("file");
 	if (!(file instanceof File)) return Response.json({
 		success: false,
@@ -451,49 +514,57 @@ async function proxyDetect(request) {
 		success: false,
 		message: "The file exceeds the upload limit."
 	}, { status: 413 });
-	const safeName = file.type === "image/png" || file.name.toLowerCase().endsWith(".png") ? "leaf.png" : "leaf.jpg";
-	const outbound = new FormData();
-	outbound.append("file", new File([await file.arrayBuffer()], safeName, { type: file.type || "application/octet-stream" }));
+	const extension = file.type === "image/png" || file.name.toLowerCase().endsWith(".png") ? "png" : "jpg";
+	const path = join(tmpdir(), `faw-${randomUUID()}.${extension}`);
 	try {
-		const response = await fetch(`${INFERENCE_ORIGIN}/api/detect`, {
-			method: "POST",
-			body: outbound,
-			signal: AbortSignal.timeout(12e4)
-		});
-		const payload = await readJson(response);
-		if (!payload || typeof payload !== "object") return Response.json({
+		await writeFile(path, Buffer.from(await file.arrayBuffer()));
+		const payload = parsePayload((await runCli([
+			"detect",
+			path,
+			"--conf",
+			String(thresholdResult.value)
+		], 12e4)).stdout);
+		if (!payload) return Response.json({
 			success: false,
 			message: "Unable to process the uploaded image."
 		}, { status: 502 });
-		return Response.json(payload, { status: response.status });
+		const status = typeof payload.status === "number" ? payload.status : payload.success ? 200 : 500;
+		return Response.json(payload, { status });
 	} catch (error) {
 		const timedOut = error instanceof Error && error.name === "TimeoutError";
 		return Response.json({
 			success: false,
 			message: timedOut ? "Detection took too long and was stopped. Try a smaller image." : OFFLINE_STATUS.message
 		}, { status: timedOut ? 504 : 503 });
+	} finally {
+		await unlink(path).catch(() => void 0);
 	}
 }
 var Route$1 = createFileRoute("/api/detect")({ server: { handlers: { POST: async ({ request }) => proxyDetect(request) } } });
 var Route = createFileRoute("/api/status")({ server: { handlers: { GET: async () => proxyStatus() } } });
 var rootRouteChildren = {
-	IndexRoute: Route$2.update({
+	IndexRoute: Route$3.update({
 		id: "/",
 		path: "/",
-		getParentRoute: () => Route$3
+		getParentRoute: () => Route$4
+	}),
+	DetectRoute: Route$2.update({
+		id: "/detect",
+		path: "/detect",
+		getParentRoute: () => Route$4
 	}),
 	ApiDetectRoute: Route$1.update({
 		id: "/api/detect",
 		path: "/api/detect",
-		getParentRoute: () => Route$3
+		getParentRoute: () => Route$4
 	}),
 	ApiStatusRoute: Route.update({
 		id: "/api/status",
 		path: "/api/status",
-		getParentRoute: () => Route$3
+		getParentRoute: () => Route$4
 	})
 };
-var routeTree = Route$3._addFileChildren(rootRouteChildren)._addFileTypes();
+var routeTree = Route$4._addFileChildren(rootRouteChildren)._addFileTypes();
 function getRouter() {
 	return createRouter({
 		routeTree,
@@ -503,4 +574,4 @@ function getRouter() {
 	});
 }
 //#endregion
-export { getRouter, router_R4FXGc3G_exports as t };
+export { getRouter, router_CEucvl9I_exports as t };

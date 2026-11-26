@@ -5,12 +5,16 @@ from __future__ import annotations
 import base64
 import logging
 
-from fastapi import APIRouter, File, UploadFile
+from fastapi import APIRouter, File, Form, UploadFile
 from fastapi.responses import JSONResponse
 
 from backend.core.config import settings
 from backend.services.image_processing import ImageRejected, decode_image, render_annotated_jpeg
-from backend.services.inference import InferenceUnavailable, get_inference_service
+from backend.services.inference import (
+    InferenceUnavailable,
+    get_inference_service,
+    validate_confidence_threshold,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -44,7 +48,15 @@ def status() -> dict:
 
 
 @router.post("/detect")
-async def detect(file: UploadFile | None = File(default=None)) -> JSONResponse:
+async def detect(
+    file: UploadFile | None = File(default=None),
+    confidence_threshold: float | None = Form(default=None),
+) -> JSONResponse:
+    try:
+        conf = validate_confidence_threshold(confidence_threshold)
+    except ValueError as exc:
+        return _error(400, str(exc))
+
     if file is None:
         return _error(400, "No file is selected.")
 
@@ -65,7 +77,7 @@ async def detect(file: UploadFile | None = File(default=None)) -> JSONResponse:
 
     service = get_inference_service()
     try:
-        detections = service.predict(image)
+        detections = service.predict(image, confidence_threshold=conf)
     except InferenceUnavailable as exc:
         return _error(503, str(exc))
     except Exception:
@@ -82,6 +94,7 @@ async def detect(file: UploadFile | None = File(default=None)) -> JSONResponse:
         status_code=200,
         content={
             "success": True,
+            "confidence_threshold": conf,
             "total_detections": len(detections),
             "detections": [item.to_dict() for item in detections],
             "annotated_image": base64.b64encode(annotated).decode("ascii"),

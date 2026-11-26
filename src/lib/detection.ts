@@ -6,6 +6,7 @@ export type Detection = {
 
 export type DetectSuccess = {
   success: true;
+  confidence_threshold?: number;
   total_detections: number;
   detections: Detection[];
   annotated_image: string;
@@ -25,12 +26,22 @@ export type ServiceStatus = {
   class_name: string;
   confidence_threshold: number | null;
   iou_threshold?: number | null;
+  imgsz?: number | null;
   max_upload_bytes: number;
   weights_hint: string;
   message: string;
 };
 
+export const MIN_CONFIDENCE_THRESHOLD = 0.05;
+export const MAX_CONFIDENCE_THRESHOLD = 0.9;
+export const DEFAULT_CONFIDENCE_THRESHOLD = 0.2;
+export const CONFIDENCE_THRESHOLD_STEP = 0.05;
 export const DEFAULT_MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+
+export function formatThreshold(value: number): string {
+  const pct = Math.round(value * 100);
+  return `${value.toFixed(2)} (${pct}%)`;
+}
 
 export function formatConfidence(value: number): string {
   const percent = value <= 1 ? value * 100 : value;
