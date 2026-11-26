@@ -45,15 +45,25 @@ def decode_image(raw: bytes) -> Image.Image:
     return image
 
 
-def render_annotated_jpeg(image: Image.Image, detections: list) -> bytes:
+def render_annotated_jpeg(
+    image: Image.Image,
+    detections: list,
+    box_rgb: tuple[int, int, int] = BOX_RGB,
+    label_prefix: str = "",
+) -> bytes:
     """Draw boxes on a copy and return JPEG bytes."""
     try:
-        return _jpeg_cv2(image, detections)
+        return _jpeg_cv2(image, detections, box_rgb=box_rgb, label_prefix=label_prefix)
     except ImportError:
-        return _jpeg_pillow(image, detections)
+        return _jpeg_pillow(image, detections, box_rgb=box_rgb, label_prefix=label_prefix)
 
 
-def _jpeg_cv2(image: Image.Image, detections: list) -> bytes:
+def _jpeg_cv2(
+    image: Image.Image,
+    detections: list,
+    box_rgb: tuple[int, int, int] = BOX_RGB,
+    label_prefix: str = "",
+) -> bytes:
     import cv2
     import numpy as np
 
@@ -64,13 +74,13 @@ def _jpeg_cv2(image: Image.Image, detections: list) -> bytes:
     font = cv2.FONT_HERSHEY_SIMPLEX
     scale = max(0.5, min(height, width) / 1100.0)
     text_thickness = max(1, thickness - 1)
-    color = (BOX_RGB[2], BOX_RGB[1], BOX_RGB[0])
+    color = (box_rgb[2], box_rgb[1], box_rgb[0])
     ink = (INK_RGB[2], INK_RGB[1], INK_RGB[0])
 
     for detection in detections:
         x1, y1, x2, y2 = detection.bbox
         cv2.rectangle(canvas, (x1, y1), (x2, y2), color, thickness, lineType=cv2.LINE_AA)
-        label = f"{detection.class_name} {detection.confidence * 100:.1f}%"
+        label = f"{label_prefix}{detection.class_name} {detection.confidence * 100:.1f}%"
         (text_width, text_height), baseline = cv2.getTextSize(label, font, scale, text_thickness)
         pad = 4
         top = y1 - text_height - baseline - pad * 2
@@ -97,7 +107,12 @@ def _jpeg_cv2(image: Image.Image, detections: list) -> bytes:
     return encoded.tobytes()
 
 
-def _jpeg_pillow(image: Image.Image, detections: list) -> bytes:
+def _jpeg_pillow(
+    image: Image.Image,
+    detections: list,
+    box_rgb: tuple[int, int, int] = BOX_RGB,
+    label_prefix: str = "",
+) -> bytes:
     canvas = image.convert("RGB").copy()
     draw = ImageDraw.Draw(canvas)
     short_side = min(canvas.size)
@@ -106,8 +121,8 @@ def _jpeg_pillow(image: Image.Image, detections: list) -> bytes:
 
     for detection in detections:
         x1, y1, x2, y2 = detection.bbox
-        draw.rectangle((x1, y1, x2, y2), outline=BOX_RGB, width=stroke)
-        label = f"{detection.class_name} {detection.confidence * 100:.1f}%"
+        draw.rectangle((x1, y1, x2, y2), outline=box_rgb, width=stroke)
+        label = f"{label_prefix}{detection.class_name} {detection.confidence * 100:.1f}%"
         text_box = draw.textbbox((0, 0), label, font=font)
         text_width = text_box[2] - text_box[0]
         text_height = text_box[3] - text_box[1]
@@ -118,7 +133,7 @@ def _jpeg_pillow(image: Image.Image, detections: list) -> bytes:
         left = min(x1, max(0, canvas.width - text_width - pad * 2))
         draw.rectangle(
             (left, top, left + text_width + pad * 2, top + text_height + pad * 2),
-            fill=BOX_RGB,
+            fill=box_rgb,
         )
         draw.text((left + pad, top + pad), label, fill=INK_RGB, font=font)
 

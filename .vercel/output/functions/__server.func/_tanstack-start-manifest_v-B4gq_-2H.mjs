@@ -1,4 +1,4 @@
-//#region node_modules/.nitro/vite/services/ssr/assets/_tanstack-start-manifest_v-VY6KV9Ux.js
+//#region node_modules/.nitro/vite/services/ssr/assets/_tanstack-start-manifest_v-B4gq_-2H.js
 var tsrStartManifest = () => ({ routes: {
 	__root__: {
 		filePath: "/Users/rainy/Downloads/datmin/JAGUNGZ/src/routes/__root.tsx",
@@ -6,24 +6,25 @@ var tsrStartManifest = () => ({ routes: {
 			"/",
 			"/detect",
 			"/api/detect",
-			"/api/status"
+			"/api/status",
+			"/api/models/status"
 		],
-		preloads: ["/assets/index-3sTzvHht.js"],
+		preloads: ["/assets/index-J03kDNdY.js"],
 		scripts: [{ attrs: {
 			type: "module",
 			async: !0,
-			src: "/assets/index-3sTzvHht.js"
+			src: "/assets/index-J03kDNdY.js"
 		} }]
 	},
 	"/": {
 		filePath: "/Users/rainy/Downloads/datmin/JAGUNGZ/src/routes/index.tsx",
 		children: void 0,
-		preloads: ["/assets/routes--9nEWmp4.js", "/assets/leaf-BY1MW-7Y.js"]
+		preloads: ["/assets/routes-B5UZAko8.js", "/assets/leaf-CT6oYzdW.js"]
 	},
 	"/detect": {
 		filePath: "/Users/rainy/Downloads/datmin/JAGUNGZ/src/routes/detect.tsx",
 		children: void 0,
-		preloads: ["/assets/detect-BPXbU0ue.js", "/assets/leaf-BY1MW-7Y.js"]
+		preloads: ["/assets/detect-Dzpp4d5a.js", "/assets/leaf-CT6oYzdW.js"]
 	}
 } });
 //#endregion

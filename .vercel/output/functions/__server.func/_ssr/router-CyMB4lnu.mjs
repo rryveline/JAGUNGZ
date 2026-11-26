@@ -3,12 +3,12 @@ import { _ as createFileRoute, b as useRouter, d as Scripts, f as HeadContent, g
 import { r as TriangleAlert } from "../_libs/lucide-react.mjs";
 import { a as union, i as string, n as number, r as object, t as literal } from "../_libs/zod.mjs";
 import { randomUUID } from "node:crypto";
-import { join } from "node:path";
+import { extname, join } from "node:path";
 import { spawn } from "node:child_process";
-import { unlink, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-//#region node_modules/.nitro/vite/services/ssr/assets/router-CEucvl9I.js
-var router_CEucvl9I_exports = /* @__PURE__ */ __exportAll({ getRouter: () => getRouter });
+//#region node_modules/.nitro/vite/services/ssr/assets/router-CyMB4lnu.js
+var router_CyMB4lnu_exports = /* @__PURE__ */ __exportAll({ getRouter: () => getRouter });
 var import_react = /* @__PURE__ */ __toESM(require_react());
 var import_jsx_runtime = require_jsx_runtime();
 var FALLBACK_MESSAGE = "An unexpected error occurred. Try reloading the page.";
@@ -336,9 +336,9 @@ function PreviewHostBridge() {
 	}, [router]);
 	return null;
 }
-var styles_default = "/assets/styles-C_g0mP48.css";
+var styles_default = "/assets/styles-7v9afBDb.css";
 var APP_NAME = "JAGUNGZ";
-var Route$4 = createRootRoute({
+var Route$11 = createRootRoute({
 	head: () => ({
 		meta: [
 			{ charSet: "utf-8" },
@@ -403,9 +403,9 @@ var Route$4 = createRootRoute({
 	})
 });
 var $$splitComponentImporter$1 = () => import("./routes-CLxOCQ5c.mjs");
-var Route$3 = createFileRoute("/")({ component: lazyRouteComponent($$splitComponentImporter$1, "component") });
-var $$splitComponentImporter = () => import("./detect-CAZPzg6I.mjs");
-var Route$2 = createFileRoute("/detect")({ component: lazyRouteComponent($$splitComponentImporter, "component") });
+var Route$10 = createFileRoute("/")({ component: lazyRouteComponent($$splitComponentImporter$1, "component") });
+var $$splitComponentImporter = () => import("./detect-DWiJ70u1.mjs");
+var Route$9 = createFileRoute("/detect")({ component: lazyRouteComponent($$splitComponentImporter, "component") });
 var OFFLINE_STATUS = {
 	service: "unavailable",
 	model_ready: false,
@@ -501,6 +501,7 @@ async function proxyDetect(request) {
 		success: false,
 		message: thresholdResult.error
 	}, { status: 400 });
+	const modelMode = incoming.get("model_mode") === "e2" ? "e2" : "e3";
 	const file = incoming.get("file");
 	if (!(file instanceof File)) return Response.json({
 		success: false,
@@ -522,7 +523,9 @@ async function proxyDetect(request) {
 			"detect",
 			path,
 			"--conf",
-			String(thresholdResult.value)
+			String(thresholdResult.value),
+			"--model",
+			modelMode
 		], 12e4)).stdout);
 		if (!payload) return Response.json({
 			success: false,
@@ -540,31 +543,505 @@ async function proxyDetect(request) {
 		await unlink(path).catch(() => void 0);
 	}
 }
-var Route$1 = createFileRoute("/api/detect")({ server: { handlers: { POST: async ({ request }) => proxyDetect(request) } } });
-var Route = createFileRoute("/api/status")({ server: { handlers: { GET: async () => proxyStatus() } } });
-var rootRouteChildren = {
-	IndexRoute: Route$3.update({
-		id: "/",
-		path: "/",
-		getParentRoute: () => Route$4
+async function proxyDetectFrame(request) {
+	let incoming;
+	try {
+		incoming = await request.formData();
+	} catch {
+		return Response.json({
+			success: false,
+			message: "No frame is selected."
+		}, { status: 400 });
+	}
+	const thresholdResult = parseConfidenceThreshold(incoming.get("confidence_threshold"));
+	if ("error" in thresholdResult) return Response.json({
+		success: false,
+		message: thresholdResult.error
+	}, { status: 400 });
+	const rawModel = incoming.get("model_mode");
+	const modelMode = rawModel === "e2" || rawModel === "compare" ? rawModel : "e3";
+	const file = incoming.get("file");
+	if (!(file instanceof File)) return Response.json({
+		success: false,
+		message: "No frame is selected."
+	}, { status: 400 });
+	if (file.size === 0) return Response.json({
+		success: false,
+		message: "The frame is empty or cannot be read."
+	}, { status: 400 });
+	if (file.size > 10485760) return Response.json({
+		success: false,
+		message: "The frame exceeds the upload limit."
+	}, { status: 413 });
+	const extension = file.type === "image/png" || file.name.toLowerCase().endsWith(".png") ? "png" : "jpg";
+	const path = join(tmpdir(), `faw-frame-${randomUUID()}.${extension}`);
+	try {
+		await writeFile(path, Buffer.from(await file.arrayBuffer()));
+		const payload = parsePayload((await runCli([
+			"detect-frame",
+			path,
+			"--conf",
+			String(thresholdResult.value),
+			"--model",
+			modelMode
+		], 3e4)).stdout);
+		if (!payload) return Response.json({
+			success: false,
+			message: "Unable to process the camera frame."
+		}, { status: 502 });
+		const status = typeof payload.status === "number" ? payload.status : payload.success ? 200 : 500;
+		return Response.json(payload, { status });
+	} catch (error) {
+		const timedOut = error instanceof Error && error.name === "TimeoutError";
+		return Response.json({
+			success: false,
+			message: timedOut ? "Frame detection timed out." : OFFLINE_STATUS.message
+		}, { status: timedOut ? 504 : 503 });
+	} finally {
+		await unlink(path).catch(() => void 0);
+	}
+}
+var MAX_VIDEO_BYTES = 52428800;
+var ALLOWED_VIDEO_EXTS = /* @__PURE__ */ new Set([
+	".mp4",
+	".mov",
+	".avi",
+	".webm"
+]);
+var JOB_TTL_MS = 9e5;
+var videoJobs = /* @__PURE__ */ new Map();
+function scheduleJobCleanup(jobId, workDir) {
+	setTimeout(() => {
+		videoJobs.delete(jobId);
+		rm(workDir, {
+			recursive: true,
+			force: true
+		}).catch(() => void 0);
+	}, JOB_TTL_MS);
+}
+function parseSampleInterval(raw) {
+	if (raw === null) return { value: .5 };
+	if (typeof raw !== "string") return { error: "Sample interval must be a number between 0.2 and 5.0 seconds." };
+	const trimmed = raw.trim();
+	if (!trimmed) return { value: .5 };
+	const parsed = Number(trimmed);
+	if (!Number.isFinite(parsed) || parsed < .2 || parsed > 5) return { error: "Sample interval must be between 0.2 and 5.0 seconds." };
+	return { value: Number(parsed.toFixed(2)) };
+}
+async function proxyDetectVideoStart(request) {
+	let incoming;
+	try {
+		incoming = await request.formData();
+	} catch {
+		return Response.json({
+			success: false,
+			message: "No video file is selected."
+		}, { status: 400 });
+	}
+	const thresholdResult = parseConfidenceThreshold(incoming.get("confidence_threshold"));
+	if ("error" in thresholdResult) return Response.json({
+		success: false,
+		message: thresholdResult.error
+	}, { status: 400 });
+	const intervalResult = parseSampleInterval(incoming.get("sample_interval_sec"));
+	if ("error" in intervalResult) return Response.json({
+		success: false,
+		message: intervalResult.error
+	}, { status: 400 });
+	const rawModel = incoming.get("model_mode");
+	const modelMode = rawModel === "e2" || rawModel === "compare" ? rawModel : "e3";
+	const file = incoming.get("file");
+	if (!(file instanceof File) || !file.name) return Response.json({
+		success: false,
+		message: "No video file is selected."
+	}, { status: 400 });
+	const ext = extname(file.name).toLowerCase();
+	if (!ALLOWED_VIDEO_EXTS.has(ext)) return Response.json({
+		success: false,
+		message: "Unsupported video format. Upload an MP4, MOV, AVI, or WEBM file."
+	}, { status: 400 });
+	if (file.size === 0) return Response.json({
+		success: false,
+		message: "The video file is corrupted or cannot be read."
+	}, { status: 400 });
+	if (file.size > MAX_VIDEO_BYTES) return Response.json({
+		success: false,
+		message: "The video exceeds the upload limit of 50 MB."
+	}, { status: 413 });
+	const jobId = randomUUID().replaceAll("-", "");
+	const workDir = join(tmpdir(), `jagungz-vid-${jobId}`);
+	const inputPath = join(workDir, `upload${ext}`);
+	try {
+		await mkdir(workDir, { recursive: true });
+		await writeFile(inputPath, Buffer.from(await file.arrayBuffer()));
+	} catch {
+		await rm(workDir, {
+			recursive: true,
+			force: true
+		}).catch(() => void 0);
+		return Response.json({
+			success: false,
+			message: "Unable to store uploaded video for analysis."
+		}, { status: 500 });
+	}
+	const job = {
+		jobId,
+		status: "queued",
+		percent: 0,
+		processedFrames: 0,
+		totalFrames: 0,
+		detectionsSoFar: 0,
+		message: "Video queued for analysis.",
+		workDir,
+		outputPath: null,
+		outputMime: "video/webm",
+		outputFilename: "faw-annotated.webm",
+		result: null
+	};
+	videoJobs.set(jobId, job);
+	scheduleJobCleanup(jobId, workDir);
+	const projectRoot = process.cwd();
+	const pythonBin = process.env.PYTHON_BIN || join(projectRoot, ".venv", "bin", "python");
+	const child = spawn(pythonBin, [
+		"-m",
+		"backend.cli",
+		"detect-video",
+		inputPath,
+		"--out-dir",
+		workDir,
+		"--conf",
+		String(thresholdResult.value),
+		"--interval",
+		String(intervalResult.value),
+		"--model",
+		modelMode
+	], {
+		cwd: projectRoot,
+		env: {
+			...process.env,
+			PYTHONPATH: projectRoot
+		}
+	});
+	let buffer = "";
+	const timer = setTimeout(() => {
+		child.kill("SIGKILL");
+		job.status = "failed";
+		job.message = "Video analysis timed out. Try a shorter video or larger sample interval.";
+	}, 3e5);
+	child.stdout.setEncoding("utf8");
+	child.stdout.on("data", (chunk) => {
+		buffer += chunk;
+		const lines = buffer.split("\n");
+		buffer = lines.pop() ?? "";
+		for (const rawLine of lines) {
+			const trimmed = rawLine.trim();
+			if (!trimmed) continue;
+			try {
+				const msg = JSON.parse(trimmed);
+				if (msg.type === "progress") {
+					job.status = "processing";
+					job.percent = typeof msg.percent === "number" ? msg.percent : job.percent;
+					job.processedFrames = typeof msg.processed_frames === "number" ? msg.processed_frames : job.processedFrames;
+					job.totalFrames = typeof msg.total_frames === "number" ? msg.total_frames : job.totalFrames;
+					job.detectionsSoFar = typeof msg.detections_so_far === "number" ? msg.detections_so_far : job.detectionsSoFar;
+					job.message = `Analyzing sampled frame ${job.processedFrames} of ${job.totalFrames}...`;
+				} else if (msg.type === "result") {
+					if (msg.success) {
+						const { type: _t, output_path: outPath, status: _s, ...summary } = msg;
+						job.status = "completed";
+						job.percent = 100;
+						job.outputPath = typeof outPath === "string" ? outPath : null;
+						job.outputMime = typeof summary.output_mime === "string" ? summary.output_mime : "video/webm";
+						job.outputFilename = typeof summary.output_filename === "string" ? summary.output_filename : "faw-annotated.webm";
+						job.result = summary;
+						job.message = "Video analysis completed.";
+					} else {
+						job.status = "failed";
+						job.message = typeof msg.message === "string" ? msg.message : "Unable to process the uploaded video.";
+					}
+				}
+			} catch {}
+		}
+	});
+	child.on("error", () => {
+		clearTimeout(timer);
+		job.status = "failed";
+		job.message = OFFLINE_STATUS.message;
+		unlink(inputPath).catch(() => void 0);
+	});
+	child.on("close", () => {
+		clearTimeout(timer);
+		if (job.status === "queued" || job.status === "processing") {
+			job.status = "failed";
+			job.message = "Video analysis stopped unexpectedly.";
+		}
+		unlink(inputPath).catch(() => void 0);
+	});
+	return Response.json({
+		success: true,
+		job_id: jobId,
+		status: "queued"
+	}, { status: 202 });
+}
+async function proxyVideoJobStatus(jobId, request) {
+	const job = videoJobs.get(jobId);
+	if (!job) return Response.json({
+		success: false,
+		message: "Video analysis job not found."
+	}, { status: 404 });
+	if ((request.headers.get("accept") ?? "").includes("text/event-stream")) {
+		const encoder = new TextEncoder();
+		const stream = new ReadableStream({ start(controller) {
+			let closed = false;
+			const send = () => {
+				if (closed) return;
+				const current = videoJobs.get(jobId);
+				if (!current) {
+					controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+						success: false,
+						status: "failed",
+						message: "Job expired."
+					})}\n\n`));
+					closed = true;
+					controller.close();
+					return;
+				}
+				const payload = {
+					success: current.status !== "failed",
+					job_id: current.jobId,
+					status: current.status,
+					percent: current.percent,
+					processed_frames: current.processedFrames,
+					total_frames: current.totalFrames,
+					detections_so_far: current.detectionsSoFar,
+					message: current.message
+				};
+				controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
+				if (current.status === "completed" || current.status === "failed") {
+					closed = true;
+					controller.close();
+				}
+			};
+			send();
+			const interval = setInterval(() => {
+				if (closed) {
+					clearInterval(interval);
+					return;
+				}
+				send();
+			}, 400);
+		} });
+		return new Response(stream, { headers: {
+			"Content-Type": "text/event-stream",
+			"Cache-Control": "no-cache",
+			Connection: "keep-alive"
+		} });
+	}
+	return Response.json({
+		success: true,
+		job_id: job.jobId,
+		status: job.status,
+		percent: job.percent,
+		processed_frames: job.processedFrames,
+		total_frames: job.totalFrames,
+		detections_so_far: job.detectionsSoFar,
+		message: job.message
+	});
+}
+async function proxyVideoJobResult(jobId) {
+	const job = videoJobs.get(jobId);
+	if (!job) return Response.json({
+		success: false,
+		message: "Video analysis job not found."
+	}, { status: 404 });
+	if (job.status === "failed") return Response.json({
+		success: false,
+		message: job.message
+	}, { status: 422 });
+	if (job.status !== "completed" || !job.result) return Response.json({
+		success: false,
+		message: "Video analysis is still in progress."
+	}, { status: 409 });
+	return Response.json({
+		success: true,
+		job_id: job.jobId,
+		video_url: `/api/detect/video/${job.jobId}/download`,
+		...job.result
+	});
+}
+async function proxyModelsStatus() {
+	try {
+		const payload = parsePayload((await runCli(["models-status"], 12e3)).stdout);
+		if (!payload) return Response.json({
+			success: false,
+			message: OFFLINE_STATUS.message
+		}, { status: 503 });
+		return Response.json(payload);
+	} catch {
+		return Response.json({
+			success: false,
+			message: OFFLINE_STATUS.message
+		}, { status: 503 });
+	}
+}
+async function proxyCompare(request) {
+	let incoming;
+	try {
+		incoming = await request.formData();
+	} catch {
+		return Response.json({
+			success: false,
+			message: "No file is selected."
+		}, { status: 400 });
+	}
+	const thresholdResult = parseConfidenceThreshold(incoming.get("confidence_threshold"));
+	if ("error" in thresholdResult) return Response.json({
+		success: false,
+		message: thresholdResult.error
+	}, { status: 400 });
+	const file = incoming.get("file");
+	if (!(file instanceof File)) return Response.json({
+		success: false,
+		message: "No file is selected."
+	}, { status: 400 });
+	if (file.size === 0) return Response.json({
+		success: false,
+		message: "The file is corrupted or cannot be read."
+	}, { status: 400 });
+	if (file.size > 33554432) return Response.json({
+		success: false,
+		message: "The file exceeds the upload limit."
+	}, { status: 413 });
+	const extension = file.type === "image/png" || file.name.toLowerCase().endsWith(".png") ? "png" : "jpg";
+	const path = join(tmpdir(), `faw-cmp-${randomUUID()}.${extension}`);
+	try {
+		await writeFile(path, Buffer.from(await file.arrayBuffer()));
+		const payload = parsePayload((await runCli([
+			"compare",
+			path,
+			"--conf",
+			String(thresholdResult.value)
+		], 12e4)).stdout);
+		if (!payload) return Response.json({
+			success: false,
+			message: "Unable to compare models on the uploaded image."
+		}, { status: 502 });
+		const status = typeof payload.status === "number" ? payload.status : payload.success ? 200 : 500;
+		return Response.json(payload, { status });
+	} catch (error) {
+		const timedOut = error instanceof Error && error.name === "TimeoutError";
+		return Response.json({
+			success: false,
+			message: timedOut ? "Model comparison timed out. Try a smaller image." : OFFLINE_STATUS.message
+		}, { status: timedOut ? 504 : 503 });
+	} finally {
+		await unlink(path).catch(() => void 0);
+	}
+}
+async function proxyVideoDownload(jobId, request) {
+	const job = videoJobs.get(jobId);
+	if (!job || job.status !== "completed" || !job.outputPath) return Response.json({
+		success: false,
+		message: "Annotated video is not available."
+	}, { status: 404 });
+	try {
+		const data = await readFile(job.outputPath);
+		const inline = new URL(request.url).searchParams.get("inline") === "1";
+		return new Response(data, {
+			status: 200,
+			headers: {
+				"Content-Type": job.outputMime,
+				"Content-Disposition": inline ? `inline; filename="${job.outputFilename}"` : `attachment; filename="${job.outputFilename}"`,
+				"Cache-Control": "no-store"
+			}
+		});
+	} catch {
+		return Response.json({
+			success: false,
+			message: "Annotated video is no longer available."
+		}, { status: 404 });
+	}
+}
+var Route$8 = createFileRoute("/api/detect")({ server: { handlers: { POST: async ({ request }) => proxyDetect(request) } } });
+var Route$7 = createFileRoute("/api/status")({ server: { handlers: { GET: async () => proxyStatus() } } });
+var Route$6 = createFileRoute("/api/detect/compare")({ server: { handlers: { POST: async ({ request }) => proxyCompare(request) } } });
+var Route$5 = createFileRoute("/api/detect/frame")({ server: { handlers: { POST: async ({ request }) => proxyDetectFrame(request) } } });
+var Route$4 = createFileRoute("/api/detect/video")({ server: { handlers: { POST: async ({ request }) => proxyDetectVideoStart(request) } } });
+var Route$3 = createFileRoute("/api/models/status")({ server: { handlers: { GET: async () => proxyModelsStatus() } } });
+var Route$2 = createFileRoute("/api/detect/video/$jobId")({ server: { handlers: { GET: async ({ params, request }) => proxyVideoJobStatus(params.jobId, request) } } });
+var Route$1 = createFileRoute("/api/detect/video/$jobId/download")({ server: { handlers: { GET: async ({ params, request }) => proxyVideoDownload(params.jobId, request) } } });
+var Route = createFileRoute("/api/detect/video/$jobId/result")({ server: { handlers: { GET: async ({ params }) => proxyVideoJobResult(params.jobId) } } });
+var IndexRoute = Route$10.update({
+	id: "/",
+	path: "/",
+	getParentRoute: () => Route$11
+});
+var DetectRoute = Route$9.update({
+	id: "/detect",
+	path: "/detect",
+	getParentRoute: () => Route$11
+});
+var ApiDetectRoute = Route$8.update({
+	id: "/api/detect",
+	path: "/api/detect",
+	getParentRoute: () => Route$11
+});
+var ApiStatusRoute = Route$7.update({
+	id: "/api/status",
+	path: "/api/status",
+	getParentRoute: () => Route$11
+});
+var ApiDetectCompareRoute = Route$6.update({
+	id: "/compare",
+	path: "/compare",
+	getParentRoute: () => ApiDetectRoute
+});
+var ApiDetectFrameRoute = Route$5.update({
+	id: "/frame",
+	path: "/frame",
+	getParentRoute: () => ApiDetectRoute
+});
+var ApiDetectVideoRoute = Route$4.update({
+	id: "/video",
+	path: "/video",
+	getParentRoute: () => ApiDetectRoute
+});
+var ApiModelsStatusRoute = Route$3.update({
+	id: "/api/models/status",
+	path: "/api/models/status",
+	getParentRoute: () => Route$11
+});
+var ApiDetectVideoJobIdRoute = Route$2.update({
+	id: "/$jobId",
+	path: "/$jobId",
+	getParentRoute: () => ApiDetectVideoRoute
+});
+var ApiDetectVideoJobIdRouteChildren = {
+	ApiDetectVideoJobIdDownloadRoute: Route$1.update({
+		id: "/download",
+		path: "/download",
+		getParentRoute: () => ApiDetectVideoJobIdRoute
 	}),
-	DetectRoute: Route$2.update({
-		id: "/detect",
-		path: "/detect",
-		getParentRoute: () => Route$4
-	}),
-	ApiDetectRoute: Route$1.update({
-		id: "/api/detect",
-		path: "/api/detect",
-		getParentRoute: () => Route$4
-	}),
-	ApiStatusRoute: Route.update({
-		id: "/api/status",
-		path: "/api/status",
-		getParentRoute: () => Route$4
+	ApiDetectVideoJobIdResultRoute: Route.update({
+		id: "/result",
+		path: "/result",
+		getParentRoute: () => ApiDetectVideoJobIdRoute
 	})
 };
-var routeTree = Route$4._addFileChildren(rootRouteChildren)._addFileTypes();
+var ApiDetectVideoRouteChildren = { ApiDetectVideoJobIdRoute: ApiDetectVideoJobIdRoute._addFileChildren(ApiDetectVideoJobIdRouteChildren) };
+var ApiDetectRouteChildren = {
+	ApiDetectCompareRoute,
+	ApiDetectFrameRoute,
+	ApiDetectVideoRoute: ApiDetectVideoRoute._addFileChildren(ApiDetectVideoRouteChildren)
+};
+var rootRouteChildren = {
+	IndexRoute,
+	DetectRoute,
+	ApiDetectRoute: ApiDetectRoute._addFileChildren(ApiDetectRouteChildren),
+	ApiStatusRoute,
+	ApiModelsStatusRoute
+};
+var routeTree = Route$11._addFileChildren(rootRouteChildren)._addFileTypes();
 function getRouter() {
 	return createRouter({
 		routeTree,
@@ -574,4 +1051,4 @@ function getRouter() {
 	});
 }
 //#endregion
-export { getRouter, router_CEucvl9I_exports as t };
+export { getRouter, router_CyMB4lnu_exports as t };

@@ -13,6 +13,13 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as DetectRouteImport } from './routes/detect'
 import { Route as ApiDetectRouteImport } from './routes/api/detect'
 import { Route as ApiStatusRouteImport } from './routes/api/status'
+import { Route as ApiDetectCompareRouteImport } from './routes/api/detect.compare'
+import { Route as ApiDetectFrameRouteImport } from './routes/api/detect.frame'
+import { Route as ApiDetectVideoRouteImport } from './routes/api/detect.video'
+import { Route as ApiModelsStatusRouteImport } from './routes/api/models.status'
+import { Route as ApiDetectVideoJobIdRouteImport } from './routes/api/detect.video.$jobId'
+import { Route as ApiDetectVideoJobIdDownloadRouteImport } from './routes/api/detect.video.$jobId.download'
+import { Route as ApiDetectVideoJobIdResultRouteImport } from './routes/api/detect.video.$jobId.result'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -34,39 +41,132 @@ const ApiStatusRoute = ApiStatusRouteImport.update({
   path: '/api/status',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiDetectCompareRoute = ApiDetectCompareRouteImport.update({
+  id: '/compare',
+  path: '/compare',
+  getParentRoute: () => ApiDetectRoute,
+} as any)
+const ApiDetectFrameRoute = ApiDetectFrameRouteImport.update({
+  id: '/frame',
+  path: '/frame',
+  getParentRoute: () => ApiDetectRoute,
+} as any)
+const ApiDetectVideoRoute = ApiDetectVideoRouteImport.update({
+  id: '/video',
+  path: '/video',
+  getParentRoute: () => ApiDetectRoute,
+} as any)
+const ApiModelsStatusRoute = ApiModelsStatusRouteImport.update({
+  id: '/api/models/status',
+  path: '/api/models/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDetectVideoJobIdRoute = ApiDetectVideoJobIdRouteImport.update({
+  id: '/$jobId',
+  path: '/$jobId',
+  getParentRoute: () => ApiDetectVideoRoute,
+} as any)
+const ApiDetectVideoJobIdDownloadRoute =
+  ApiDetectVideoJobIdDownloadRouteImport.update({
+    id: '/download',
+    path: '/download',
+    getParentRoute: () => ApiDetectVideoJobIdRoute,
+  } as any)
+const ApiDetectVideoJobIdResultRoute =
+  ApiDetectVideoJobIdResultRouteImport.update({
+    id: '/result',
+    path: '/result',
+    getParentRoute: () => ApiDetectVideoJobIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/detect': typeof DetectRoute
-  '/api/detect': typeof ApiDetectRoute
+  '/api/detect': typeof ApiDetectRouteWithChildren
   '/api/status': typeof ApiStatusRoute
+  '/api/detect/compare': typeof ApiDetectCompareRoute
+  '/api/detect/frame': typeof ApiDetectFrameRoute
+  '/api/detect/video': typeof ApiDetectVideoRouteWithChildren
+  '/api/models/status': typeof ApiModelsStatusRoute
+  '/api/detect/video/$jobId': typeof ApiDetectVideoJobIdRouteWithChildren
+  '/api/detect/video/$jobId/download': typeof ApiDetectVideoJobIdDownloadRoute
+  '/api/detect/video/$jobId/result': typeof ApiDetectVideoJobIdResultRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/detect': typeof DetectRoute
-  '/api/detect': typeof ApiDetectRoute
+  '/api/detect': typeof ApiDetectRouteWithChildren
   '/api/status': typeof ApiStatusRoute
+  '/api/detect/compare': typeof ApiDetectCompareRoute
+  '/api/detect/frame': typeof ApiDetectFrameRoute
+  '/api/detect/video': typeof ApiDetectVideoRouteWithChildren
+  '/api/models/status': typeof ApiModelsStatusRoute
+  '/api/detect/video/$jobId': typeof ApiDetectVideoJobIdRouteWithChildren
+  '/api/detect/video/$jobId/download': typeof ApiDetectVideoJobIdDownloadRoute
+  '/api/detect/video/$jobId/result': typeof ApiDetectVideoJobIdResultRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/detect': typeof DetectRoute
-  '/api/detect': typeof ApiDetectRoute
+  '/api/detect': typeof ApiDetectRouteWithChildren
   '/api/status': typeof ApiStatusRoute
+  '/api/detect/compare': typeof ApiDetectCompareRoute
+  '/api/detect/frame': typeof ApiDetectFrameRoute
+  '/api/detect/video': typeof ApiDetectVideoRouteWithChildren
+  '/api/models/status': typeof ApiModelsStatusRoute
+  '/api/detect/video/$jobId': typeof ApiDetectVideoJobIdRouteWithChildren
+  '/api/detect/video/$jobId/download': typeof ApiDetectVideoJobIdDownloadRoute
+  '/api/detect/video/$jobId/result': typeof ApiDetectVideoJobIdResultRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/detect' | '/api/detect' | '/api/status'
+  fullPaths:
+    | '/'
+    | '/detect'
+    | '/api/detect'
+    | '/api/status'
+    | '/api/detect/compare'
+    | '/api/detect/frame'
+    | '/api/detect/video'
+    | '/api/models/status'
+    | '/api/detect/video/$jobId'
+    | '/api/detect/video/$jobId/download'
+    | '/api/detect/video/$jobId/result'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/detect' | '/api/detect' | '/api/status'
-  id: '__root__' | '/' | '/detect' | '/api/detect' | '/api/status'
+  to:
+    | '/'
+    | '/detect'
+    | '/api/detect'
+    | '/api/status'
+    | '/api/detect/compare'
+    | '/api/detect/frame'
+    | '/api/detect/video'
+    | '/api/models/status'
+    | '/api/detect/video/$jobId'
+    | '/api/detect/video/$jobId/download'
+    | '/api/detect/video/$jobId/result'
+  id:
+    | '__root__'
+    | '/'
+    | '/detect'
+    | '/api/detect'
+    | '/api/status'
+    | '/api/detect/compare'
+    | '/api/detect/frame'
+    | '/api/detect/video'
+    | '/api/models/status'
+    | '/api/detect/video/$jobId'
+    | '/api/detect/video/$jobId/download'
+    | '/api/detect/video/$jobId/result'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DetectRoute: typeof DetectRoute
-  ApiDetectRoute: typeof ApiDetectRoute
+  ApiDetectRoute: typeof ApiDetectRouteWithChildren
   ApiStatusRoute: typeof ApiStatusRoute
+  ApiModelsStatusRoute: typeof ApiModelsStatusRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -99,14 +199,105 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/detect/compare': {
+      id: '/api/detect/compare'
+      path: '/compare'
+      fullPath: '/api/detect/compare'
+      preLoaderRoute: typeof ApiDetectCompareRouteImport
+      parentRoute: typeof ApiDetectRoute
+    }
+    '/api/detect/frame': {
+      id: '/api/detect/frame'
+      path: '/frame'
+      fullPath: '/api/detect/frame'
+      preLoaderRoute: typeof ApiDetectFrameRouteImport
+      parentRoute: typeof ApiDetectRoute
+    }
+    '/api/detect/video': {
+      id: '/api/detect/video'
+      path: '/video'
+      fullPath: '/api/detect/video'
+      preLoaderRoute: typeof ApiDetectVideoRouteImport
+      parentRoute: typeof ApiDetectRoute
+    }
+    '/api/models/status': {
+      id: '/api/models/status'
+      path: '/api/models/status'
+      fullPath: '/api/models/status'
+      preLoaderRoute: typeof ApiModelsStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/detect/video/$jobId': {
+      id: '/api/detect/video/$jobId'
+      path: '/$jobId'
+      fullPath: '/api/detect/video/$jobId'
+      preLoaderRoute: typeof ApiDetectVideoJobIdRouteImport
+      parentRoute: typeof ApiDetectVideoRoute
+    }
+    '/api/detect/video/$jobId/download': {
+      id: '/api/detect/video/$jobId/download'
+      path: '/download'
+      fullPath: '/api/detect/video/$jobId/download'
+      preLoaderRoute: typeof ApiDetectVideoJobIdDownloadRouteImport
+      parentRoute: typeof ApiDetectVideoJobIdRoute
+    }
+    '/api/detect/video/$jobId/result': {
+      id: '/api/detect/video/$jobId/result'
+      path: '/result'
+      fullPath: '/api/detect/video/$jobId/result'
+      preLoaderRoute: typeof ApiDetectVideoJobIdResultRouteImport
+      parentRoute: typeof ApiDetectVideoJobIdRoute
+    }
   }
 }
+
+interface ApiDetectVideoJobIdRouteChildren {
+  ApiDetectVideoJobIdDownloadRoute: typeof ApiDetectVideoJobIdDownloadRoute
+  ApiDetectVideoJobIdResultRoute: typeof ApiDetectVideoJobIdResultRoute
+}
+
+const ApiDetectVideoJobIdRouteChildren: ApiDetectVideoJobIdRouteChildren = {
+  ApiDetectVideoJobIdDownloadRoute: ApiDetectVideoJobIdDownloadRoute,
+  ApiDetectVideoJobIdResultRoute: ApiDetectVideoJobIdResultRoute,
+}
+
+const ApiDetectVideoJobIdRouteWithChildren =
+  ApiDetectVideoJobIdRoute._addFileChildren(ApiDetectVideoJobIdRouteChildren)
+
+interface ApiDetectVideoRouteChildren {
+  ApiDetectVideoJobIdRoute: typeof ApiDetectVideoJobIdRouteWithChildren
+}
+
+const ApiDetectVideoRouteChildren: ApiDetectVideoRouteChildren = {
+  ApiDetectVideoJobIdRoute: ApiDetectVideoJobIdRouteWithChildren,
+}
+
+const ApiDetectVideoRouteWithChildren = ApiDetectVideoRoute._addFileChildren(
+  ApiDetectVideoRouteChildren,
+)
+
+interface ApiDetectRouteChildren {
+  ApiDetectCompareRoute: typeof ApiDetectCompareRoute
+  ApiDetectFrameRoute: typeof ApiDetectFrameRoute
+  ApiDetectVideoRoute: typeof ApiDetectVideoRouteWithChildren
+}
+
+const ApiDetectRouteChildren: ApiDetectRouteChildren = {
+  ApiDetectCompareRoute: ApiDetectCompareRoute,
+  ApiDetectFrameRoute: ApiDetectFrameRoute,
+  ApiDetectVideoRoute: ApiDetectVideoRouteWithChildren,
+}
+
+const ApiDetectRouteWithChildren = ApiDetectRoute._addFileChildren(
+  ApiDetectRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DetectRoute: DetectRoute,
-  ApiDetectRoute: ApiDetectRoute,
+  ApiDetectRoute: ApiDetectRouteWithChildren,
   ApiStatusRoute: ApiStatusRoute,
+  ApiModelsStatusRoute: ApiModelsStatusRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

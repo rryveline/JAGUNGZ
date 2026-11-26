@@ -1,6 +1,6 @@
 import { i as __toESM } from "../_runtime.mjs";
 import { q as require_react, x as require_jsx_runtime, y as Link } from "../_libs/@tanstack/react-router+[...].mjs";
-import { c as Leaf, o as Menu, t as X, u as ArrowRight } from "../_libs/lucide-react.mjs";
+import { f as Leaf, t as X, u as Menu, y as ArrowRight } from "../_libs/lucide-react.mjs";
 //#region node_modules/.nitro/vite/services/ssr/assets/routes-CLxOCQ5c.js
 var import_react = /* @__PURE__ */ __toESM(require_react());
 var import_jsx_runtime = require_jsx_runtime();
